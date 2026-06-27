@@ -26,7 +26,11 @@ Merge into main
 
 Senior Product Manager, System Architect, aur UI/UX Designer mindset se project ka complete planning foundation create karna.
 
-### Scope
+### Status
+
+Complete.
+
+### Scope Completed
 
 - Product overview
 - Feature planning
@@ -53,43 +57,70 @@ Senior Product Manager, System Architect, aur UI/UX Designer mindset se project 
 - `docs/TECH_STACK.md`
 - `docs/PRD_SUMMARY.md`
 - `docs/MILESTONES.md`
-- Placeholder project folders
-
-### Explicitly Not Included
-
-- React components
-- Express APIs
-- Authentication implementation
-- Business logic
-- Database schemas/models
-- OpenAI integration
-- Deployment setup
-
-### Completion Criteria
-
-Milestone 1 complete tab maana jayega jab:
-
-- Product, UX, API, DB, architecture docs complete hon.
-- Folder structure professional MERN SaaS style mein ready ho.
-- No implementation code added ho.
-- Branch GitHub par push ho.
-- Pull Request review ke liye ready ho.
 
 ## Milestone 2 — Project Initialization & App Shell
 
 ### Objective
 
-Client and server apps initialize karna with basic app shell.
+Client and server apps initialize karna with basic runnable app shell.
 
-### Planned Scope
+### Status
+
+Current milestone.
+
+### Scope
 
 - React + Vite setup
-- Tailwind setup
+- Tailwind CSS setup
 - React Router setup
-- Axios base setup
+- Axios base client setup
 - Express server setup
 - Health endpoint
-- Environment examples
+- Environment example files
+- Basic lint and format setup
+- Placeholder pages and layouts
+
+### Deliverables
+
+- Root `package.json`
+- Root Prettier config
+- `client/package.json`
+- React + Vite app shell
+- Tailwind CSS config
+- React Router route map
+- Public, auth, dashboard, and admin layouts
+- Placeholder pages for planned routes
+- Axios base API client
+- `server/package.json`
+- Express app shell
+- `GET /api/health`
+- Error and not-found middleware
+- Client and server `.env.example` files
+
+### Completion Criteria
+
+Milestone 2 complete tab maana jayega jab:
+
+- Client Vite app start ho.
+- Tailwind styles load hon.
+- Planned frontend routes placeholder pages render karein.
+- Express server start ho.
+- `/api/health` JSON response return kare.
+- Lint command pass ho.
+- Client build command pass ho.
+- No auth/database/AI/business logic implement ho.
+
+### Explicitly Not Included
+
+- JWT authentication implementation
+- Password hashing
+- MongoDB connection
+- Database schemas/models
+- OpenAI integration
+- Trip CRUD
+- Budget calculation logic
+- Saved trips persistence
+- Admin analytics
 
 ## Milestone 3 — Authentication & User Profiles
 
@@ -203,22 +234,22 @@ Production readiness and Render deployment.
 - MongoDB Atlas setup
 - Production verification
 
-## Recommended Milestone 1 Git Details
+## Recommended Milestone 2 Git Details
 
 ### Branch Name
 
 ```bash
-milestone-1-discovery-planning
+milestone-2-app-shell
 ```
 
 ### Commit Message
 
 ```bash
-docs: complete milestone 1 discovery planning
+chore: initialize milestone 2 app shell
 ```
 
 ### PR Title
 
 ```txt
-Milestone 1: Discovery, Planning & Experience Design
+Milestone 2: Project Initialization & App Shell
 ```

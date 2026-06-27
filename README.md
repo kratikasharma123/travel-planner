@@ -1,9 +1,9 @@
 # TravelAI Planner
 
-TravelAI Planner ek production-quality AI SaaS web application ka planned foundation hai. App ka goal users ko personalized travel itineraries, destination discovery, travel budget planning, AI travel assistant, saved trips, user profiles, aur admin operations provide karna hai.
+TravelAI Planner ek production-quality AI SaaS web application hai jo users ko personalized travel itineraries, destination discovery, travel budget planning, AI travel assistant, saved trips, user profiles, aur admin operations provide karega.
 
-> **Current Milestone:** Milestone 1 — Discovery, Planning & Experience Design  
-> **Important:** Is milestone mein sirf planning, architecture, documentation, UI/UX design, aur project setup hai. Backend APIs, React components, authentication, database schemas, ya business logic implement nahi kiya gaya hai.
+> **Current Milestone:** Milestone 2 — Project Initialization & App Shell  
+> **Important:** Is milestone mein runnable React + Vite client shell aur Express server shell add hua hai. Full authentication, database, AI integration, trip CRUD, budget logic, and admin analytics abhi implement nahi hue.
 
 ## Project Overview
 
@@ -19,7 +19,7 @@ Travel planning normally multiple tabs, websites, notes, budget calculations, au
 | Business Travelers | Efficient schedule, quick recommendations, short-trip planning |
 | Travel Agencies | Faster itinerary drafts, client-specific recommendations |
 
-## Core Features
+## Core Features Planned
 
 - AI Trip Planner
 - Destination Discovery
@@ -30,51 +30,52 @@ Travel planning normally multiple tabs, websites, notes, budget calculations, au
 - Admin Dashboard
 - SaaS-ready account and usage planning
 
-## Planned Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Frontend | React, Vite, Tailwind CSS, React Router, Axios |
 | Backend | Node.js, Express.js |
-| Database | MongoDB |
-| Authentication | JWT |
-| AI | OpenAI API |
-| Deployment | Render |
+| Database | MongoDB planned for later milestone |
+| Authentication | JWT planned for later milestone |
+| AI | OpenAI API planned for later milestone |
+| Deployment | Render planned for later milestone |
 
 ## Folder Structure
 
 ```txt
 travel/
-├── client/                  # Future React + Vite frontend app
+├── client/                  # React + Vite frontend app shell
+│   ├── index.html
+│   ├── package.json
 │   └── src/
 │       ├── assets/          # Frontend images, icons, illustrations
-│       ├── components/      # Reusable UI components
-│       ├── features/        # Feature-based frontend modules
-│       ├── hooks/           # Custom React hooks
-│       ├── layouts/         # Page layout wrappers
-│       ├── pages/           # Route-level pages
-│       ├── routes/          # Frontend route planning
-│       ├── services/        # API communication planning
-│       ├── store/           # Global state planning
-│       ├── styles/          # Global styling and design tokens
-│       └── utils/           # Helper utilities
-├── server/                  # Future Node.js + Express backend app
+│       ├── components/      # Reusable UI shell components
+│       ├── features/        # Future feature-based modules
+│       ├── hooks/           # Future custom React hooks
+│       ├── layouts/         # Public, auth, dashboard, admin layouts
+│       ├── pages/           # Route-level placeholder pages
+│       ├── routes/          # React Router route definitions
+│       ├── services/        # Axios API client
+│       ├── store/           # Future global state planning
+│       ├── styles/          # Tailwind/global styles
+│       └── utils/           # Future frontend utilities
+├── server/                  # Express backend app shell
+│   ├── package.json
 │   └── src/
-│       ├── config/          # App, DB, auth, AI config planning
-│       ├── controllers/     # Future request handlers
-│       ├── middleware/      # Future auth, validation, error middleware
+│       ├── config/          # Environment config
+│       ├── controllers/     # Health controller only for Milestone 2
+│       ├── middleware/      # Error and not-found middleware
 │       ├── models/          # Future MongoDB models
-│       ├── routes/          # Future REST route definitions
+│       ├── routes/          # Health route only for Milestone 2
 │       ├── services/        # Future business and AI service layer
-│       ├── utils/           # Backend helper utilities
-│       └── validators/      # Future request validation planning
+│       ├── utils/           # Response helpers
+│       └── validators/      # Future request validation
 ├── docs/                    # Product, UX, architecture, API, DB docs
 ├── assets/                  # Brand and wireframe planning assets
 ├── scripts/                 # Future automation scripts
 └── .github/workflows/       # Future CI/CD workflows
 ```
-
-Detailed explanation available in [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md).
 
 ## Documentation Index
 
@@ -91,38 +92,117 @@ Detailed explanation available in [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.
 - [Milestones](docs/MILESTONES.md)
 - [PRD Summary](docs/PRD_SUMMARY.md)
 
-## Installation / Setup for Milestone 1
+## Installation
 
-Milestone 1 mein app install/run karne layak code intentionally nahi hai. Ye commands project repository setup ke liye hain:
+Root dependencies:
 
 ```bash
-cd "C:/Users/Lenovo/OneDrive/Desktop/Project/travel"
-git init
-git checkout -b milestone-1-discovery-planning
-git add .
-git commit -m "docs: complete milestone 1 discovery planning"
+npm install
 ```
 
-GitHub par push karne ke liye:
+Client dependencies:
 
 ```bash
-gh repo create TravelAI-Planner --private --source=. --remote=origin
-git push -u origin milestone-1-discovery-planning
+npm install --prefix client
 ```
 
-Agar repo already GitHub par created hai:
+Server dependencies:
 
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/TravelAI-Planner.git
-git push -u origin milestone-1-discovery-planning
+npm install --prefix server
+```
+
+## Environment Setup
+
+Copy example env files before local development:
+
+```bash
+cp client/.env.example client/.env
+cp server/.env.example server/.env
+```
+
+Client env:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+Server env:
+
+```env
+NODE_ENV=development
+PORT=5000
+CLIENT_URL=http://localhost:5173
+```
+
+## Run the App
+
+Run client and server together:
+
+```bash
+npm run dev
+```
+
+Run only frontend:
+
+```bash
+npm run dev:client
+```
+
+Run only backend:
+
+```bash
+npm run dev:server
+```
+
+## Verification URLs
+
+Frontend:
+
+```txt
+http://localhost:5173
+```
+
+Server health endpoint:
+
+```txt
+http://localhost:5000/api/health
+```
+
+## Available Routes in Milestone 2
+
+- `/`
+- `/login`
+- `/register`
+- `/dashboard`
+- `/planner`
+- `/destinations`
+- `/budget`
+- `/my-trips`
+- `/assistant`
+- `/profile`
+- `/admin`
+
+These routes render placeholder pages only. Real feature logic comes in later milestones.
+
+## Scripts
+
+```bash
+npm run dev
+npm run dev:client
+npm run dev:server
+npm run build
+npm run lint
+npm run format
+npm run format:check
 ```
 
 ## Roadmap
 
 | Milestone | Focus | Status |
 |---|---|---|
-| Milestone 1 | Discovery, planning, UI/UX, architecture, documentation | Current |
-| Milestone 2 | Project initialization and app shell | Planned |
+| Milestone 1 | Discovery, planning, UI/UX, architecture, documentation | Complete |
+| Milestone 2 | Project initialization and app shell | Current |
 | Milestone 3 | Authentication and user profiles | Planned |
 | Milestone 4 | Trip and destination data layer | Planned |
 | Milestone 5 | AI itinerary generation | Planned |
@@ -132,25 +212,40 @@ git push -u origin milestone-1-discovery-planning
 | Milestone 9 | Testing, security, production hardening | Planned |
 | Milestone 10 | Render deployment and release | Planned |
 
-## Milestone 1 Deliverables
+## Milestone 2 Deliverables
 
-- Professional documentation
-- Product roadmap
-- Feature planning
-- User journey planning
-- Database entity planning
-- Future REST API planning
-- MERN folder structure
-- UI/UX page planning
-- Design system
-- System architecture diagrams
+- React + Vite client initialized
+- Tailwind CSS configured
+- React Router app routes created
+- Public, auth, dashboard, and admin layouts created
+- Placeholder pages for planned product screens
+- Axios base client created
+- Express server initialized
+- `GET /api/health` endpoint created
+- Environment example files added
+- Root scripts, lint, and formatting setup added
 
-## Out of Scope for Milestone 1
+## Out of Scope for Milestone 2
 
-- React component code
-- Express API code
-- MongoDB schemas
-- JWT implementation
-- OpenAI integration
-- Deployment configuration
+- JWT authentication implementation
+- MongoDB connection or schemas
+- OpenAI API integration
+- Trip CRUD APIs
+- Budget calculation logic
+- Saved trips persistence
+- Admin analytics logic
 - Payment or subscription implementation
+
+## Git Details
+
+Recommended branch:
+
+```bash
+milestone-2-app-shell
+```
+
+Recommended commit message:
+
+```bash
+git commit -m "chore: initialize milestone 2 app shell"
+```
