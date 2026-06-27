@@ -8,12 +8,12 @@ function AuthLayout() {
           TravelAI Planner
         </Link>
         <div>
-          <p className="text-sm uppercase tracking-[0.28em] text-primary-100">AI SaaS Travel Planning</p>
+          <p className="text-sm uppercase tracking-[0.28em] text-primary-100">Secure travel workspace</p>
           <h1 className="mt-5 text-4xl font-bold leading-tight">
-            Plan smarter trips with a clean app shell foundation.
+            Login, save preferences, and continue planning smarter trips.
           </h1>
           <p className="mt-4 text-slate-300">
-            Authentication screens are placeholders in Milestone 2. Real auth starts in Milestone 3.
+            Authentication is powered by HttpOnly JWT cookies, protected routes, and a basic user profile foundation.
           </p>
         </div>
       </aside>

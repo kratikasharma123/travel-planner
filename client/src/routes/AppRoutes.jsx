@@ -15,6 +15,9 @@ import NotFoundPage from '../pages/NotFoundPage.jsx';
 import PlannerPage from '../pages/PlannerPage.jsx';
 import ProfilePage from '../pages/ProfilePage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
+import AdminRoute from './AdminRoute.jsx';
+import ProtectedRoute from './ProtectedRoute.jsx';
+import PublicOnlyRoute from './PublicOnlyRoute.jsx';
 
 function AppRoutes() {
   return (
@@ -23,23 +26,29 @@ function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
       </Route>
 
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+      <Route element={<PublicOnlyRoute />}>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
       </Route>
 
-      <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/planner" element={<PlannerPage />} />
-        <Route path="/destinations" element={<DestinationsPage />} />
-        <Route path="/budget" element={<BudgetPage />} />
-        <Route path="/my-trips" element={<MyTripsPage />} />
-        <Route path="/assistant" element={<AssistantPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/planner" element={<PlannerPage />} />
+          <Route path="/destinations" element={<DestinationsPage />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/my-trips" element={<MyTripsPage />} />
+          <Route path="/assistant" element={<AssistantPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
       </Route>
 
-      <Route element={<AdminLayout />}>
-        <Route path="/admin" element={<AdminPage />} />
+      <Route element={<AdminRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminPage />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

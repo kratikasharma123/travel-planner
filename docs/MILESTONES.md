@@ -42,22 +42,6 @@ Complete.
 - System architecture planning
 - Professional MERN folder structure
 
-### Deliverables
-
-- `README.md`
-- `docs/PROJECT_ROADMAP.md`
-- `docs/FEATURES.md`
-- `docs/USER_FLOW.md`
-- `docs/DATABASE_PLANNING.md`
-- `docs/API_PLANNING.md`
-- `docs/PROJECT_STRUCTURE.md`
-- `docs/UI_UX_DESIGN.md`
-- `docs/DESIGN_SYSTEM.md`
-- `docs/SYSTEM_ARCHITECTURE.md`
-- `docs/TECH_STACK.md`
-- `docs/PRD_SUMMARY.md`
-- `docs/MILESTONES.md`
-
 ## Milestone 2 — Project Initialization & App Shell
 
 ### Objective
@@ -66,9 +50,9 @@ Client and server apps initialize karna with basic runnable app shell.
 
 ### Status
 
-Current milestone.
+Complete.
 
-### Scope
+### Scope Completed
 
 - React + Vite setup
 - Tailwind CSS setup
@@ -80,61 +64,80 @@ Current milestone.
 - Basic lint and format setup
 - Placeholder pages and layouts
 
-### Deliverables
-
-- Root `package.json`
-- Root Prettier config
-- `client/package.json`
-- React + Vite app shell
-- Tailwind CSS config
-- React Router route map
-- Public, auth, dashboard, and admin layouts
-- Placeholder pages for planned routes
-- Axios base API client
-- `server/package.json`
-- Express app shell
-- `GET /api/health`
-- Error and not-found middleware
-- Client and server `.env.example` files
-
-### Completion Criteria
-
-Milestone 2 complete tab maana jayega jab:
-
-- Client Vite app start ho.
-- Tailwind styles load hon.
-- Planned frontend routes placeholder pages render karein.
-- Express server start ho.
-- `/api/health` JSON response return kare.
-- Lint command pass ho.
-- Client build command pass ho.
-- No auth/database/AI/business logic implement ho.
-
-### Explicitly Not Included
-
-- JWT authentication implementation
-- Password hashing
-- MongoDB connection
-- Database schemas/models
-- OpenAI integration
-- Trip CRUD
-- Budget calculation logic
-- Saved trips persistence
-- Admin analytics
-
 ## Milestone 3 — Authentication & User Profiles
 
 ### Objective
 
-JWT-based secure user account system implement karna.
+JWT-based secure user account system implement karna with user profiles and protected routes.
 
-### Planned Scope
+### Status
 
-- Register/login
-- JWT middleware
+Current milestone.
+
+### Scope
+
+- User registration
+- User login
+- User logout
+- Current user session endpoint
+- JWT in HttpOnly cookie
 - Password hashing
-- User profile
-- Protected routes
+- MongoDB connection for user persistence
+- User model only
+- Protected backend middleware
+- Protected frontend routes
+- Public-only login/register routes
+- Basic admin route guard
+- User profile get/update
+- Travel preferences update
+
+### Deliverables
+
+- MongoDB connection foundation
+- `User` model
+- Password utility
+- Auth token utility
+- Auth middleware
+- Auth validators
+- User validators
+- Auth service/controller/routes
+- User service/controller/routes
+- Auth-aware Axios client
+- Auth context and hook
+- Protected route wrappers
+- Login and register forms
+- Profile form
+- Dashboard logout
+- Updated environment examples
+
+### Completion Criteria
+
+Milestone 3 complete tab maana jayega jab:
+
+- User register kar sake.
+- Password hash form mein store ho.
+- User login kar sake.
+- Server HttpOnly JWT cookie set kare.
+- User logout kar sake and cookie clear ho.
+- `/api/auth/me` authenticated user return kare.
+- `/api/users/profile` protected ho.
+- User basic profile update kar sake.
+- Frontend protected routes logged-out users ko `/login` bhejein.
+- Login/register pages authenticated users ko dashboard bhejein.
+- Lint and build pass hon.
+
+### Explicitly Not Included
+
+- AI/OpenAI integration
+- Trip CRUD
+- Destination CRUD
+- Budget calculation/storage
+- Saved trips persistence
+- Admin analytics/user management
+- Refresh token rotation
+- Password reset/email verification
+- OAuth/social login
+- Payment/subscriptions
 
 ## Milestone 4 — Trip Data Layer
 
@@ -144,8 +147,10 @@ Trips, destinations, budgets, saved trips ke database models and CRUD foundation
 
 ### Planned Scope
 
-- MongoDB connection
-- Models
+- Trip models
+- Destination models
+- Budget models
+- Saved trip models
 - Trip CRUD
 - Saved trip CRUD
 - User ownership rules
@@ -234,22 +239,22 @@ Production readiness and Render deployment.
 - MongoDB Atlas setup
 - Production verification
 
-## Recommended Milestone 2 Git Details
+## Recommended Milestone 3 Git Details
 
 ### Branch Name
 
 ```bash
-milestone-2-app-shell
+milestone-3-auth-profiles
 ```
 
 ### Commit Message
 
 ```bash
-chore: initialize milestone 2 app shell
+feat: add milestone 3 authentication and profiles
 ```
 
 ### PR Title
 
 ```txt
-Milestone 2: Project Initialization & App Shell
+Milestone 3: Authentication & User Profiles
 ```

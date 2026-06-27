@@ -10,6 +10,7 @@ export function errorMiddleware(err, req, res, next) {
     message: err.message || 'Internal server error',
     error: {
       code: err.code || 'INTERNAL_SERVER_ERROR',
+      details: err.details || null,
     },
   });
 }

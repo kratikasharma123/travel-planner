@@ -1,6 +1,18 @@
 import app from './app.js';
+import { connectDatabase } from './config/db.js';
 import env from './config/env.js';
 
-app.listen(env.port, () => {
-  console.log(`TravelAI Planner API running on port ${env.port}`);
-});
+async function startServer() {
+  try {
+    await connectDatabase();
+
+    app.listen(env.port, () => {
+      console.log(`TravelAI Planner API running on port ${env.port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start TravelAI Planner API:', error.message);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -2,8 +2,8 @@
 
 TravelAI Planner ek production-quality AI SaaS web application hai jo users ko personalized travel itineraries, destination discovery, travel budget planning, AI travel assistant, saved trips, user profiles, aur admin operations provide karega.
 
-> **Current Milestone:** Milestone 2 — Project Initialization & App Shell  
-> **Important:** Is milestone mein runnable React + Vite client shell aur Express server shell add hua hai. Full authentication, database, AI integration, trip CRUD, budget logic, and admin analytics abhi implement nahi hue.
+> **Current Milestone:** Milestone 3 — Authentication & User Profiles  
+> **Important:** Is milestone mein real authentication foundation add hua hai: register, login, logout, protected routes, HttpOnly JWT cookie session, MongoDB-backed user model, and basic profile management. AI, trip CRUD, budget logic, saved trips persistence, and admin analytics abhi implement nahi hue.
 
 ## Project Overview
 
@@ -19,62 +19,77 @@ Travel planning normally multiple tabs, websites, notes, budget calculations, au
 | Business Travelers | Efficient schedule, quick recommendations, short-trip planning |
 | Travel Agencies | Faster itinerary drafts, client-specific recommendations |
 
-## Core Features Planned
-
-- AI Trip Planner
-- Destination Discovery
-- Budget Planner
-- AI Travel Assistant
-- Saved Trips
-- User Profiles
-- Admin Dashboard
-- SaaS-ready account and usage planning
-
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Frontend | React, Vite, Tailwind CSS, React Router, Axios |
 | Backend | Node.js, Express.js |
-| Database | MongoDB planned for later milestone |
-| Authentication | JWT planned for later milestone |
+| Database | MongoDB + Mongoose for user auth foundation |
+| Authentication | JWT in HttpOnly cookie |
+| Password Security | bcryptjs password hashing |
+| Validation | Zod |
 | AI | OpenAI API planned for later milestone |
 | Deployment | Render planned for later milestone |
+
+## Current Features
+
+### Milestone 2 App Shell
+
+- React + Vite client
+- Tailwind CSS
+- React Router routes
+- Public/auth/dashboard/admin layouts
+- Express app shell
+- Health endpoint
+
+### Milestone 3 Auth Foundation
+
+- User registration
+- User login
+- User logout
+- Current user endpoint
+- MongoDB-backed User model
+- Password hashing
+- HttpOnly JWT cookie
+- Protected backend middleware
+- Protected frontend routes
+- Public-only auth routes
+- Basic admin route guard
+- User profile view/update
+- Travel preferences update
 
 ## Folder Structure
 
 ```txt
 travel/
-├── client/                  # React + Vite frontend app shell
+├── client/
 │   ├── index.html
 │   ├── package.json
 │   └── src/
-│       ├── assets/          # Frontend images, icons, illustrations
-│       ├── components/      # Reusable UI shell components
-│       ├── features/        # Future feature-based modules
-│       ├── hooks/           # Future custom React hooks
-│       ├── layouts/         # Public, auth, dashboard, admin layouts
-│       ├── pages/           # Route-level placeholder pages
-│       ├── routes/          # React Router route definitions
-│       ├── services/        # Axios API client
-│       ├── store/           # Future global state planning
-│       ├── styles/          # Tailwind/global styles
-│       └── utils/           # Future frontend utilities
-├── server/                  # Express backend app shell
+│       ├── components/
+│       ├── hooks/
+│       ├── layouts/
+│       ├── pages/
+│       ├── routes/
+│       ├── services/
+│       ├── store/
+│       └── styles/
+├── server/
 │   ├── package.json
 │   └── src/
-│       ├── config/          # Environment config
-│       ├── controllers/     # Health controller only for Milestone 2
-│       ├── middleware/      # Error and not-found middleware
-│       ├── models/          # Future MongoDB models
-│       ├── routes/          # Health route only for Milestone 2
-│       ├── services/        # Future business and AI service layer
-│       ├── utils/           # Response helpers
-│       └── validators/      # Future request validation
-├── docs/                    # Product, UX, architecture, API, DB docs
-├── assets/                  # Brand and wireframe planning assets
-├── scripts/                 # Future automation scripts
-└── .github/workflows/       # Future CI/CD workflows
+│       ├── config/
+│       ├── controllers/
+│       ├── middleware/
+│       ├── models/
+│       ├── routes/
+│       ├── services/
+│       ├── utils/
+│       └── validators/
+├── docs/
+├── assets/
+├── scripts/
+└── .github/workflows/
 ```
 
 ## Documentation Index
@@ -94,27 +109,15 @@ travel/
 
 ## Installation
 
-Root dependencies:
-
 ```bash
 npm install
-```
-
-Client dependencies:
-
-```bash
 npm install --prefix client
-```
-
-Server dependencies:
-
-```bash
 npm install --prefix server
 ```
 
 ## Environment Setup
 
-Copy example env files before local development:
+Copy example env files:
 
 ```bash
 cp client/.env.example client/.env
@@ -133,7 +136,13 @@ Server env:
 NODE_ENV=development
 PORT=5000
 CLIENT_URL=http://localhost:5173
+MONGO_URI=mongodb://127.0.0.1:27017/travelai_planner
+JWT_SECRET=replace_with_strong_secret
+JWT_EXPIRES_IN=7d
+JWT_COOKIE_NAME=travelai_token
 ```
+
+MongoDB local ya MongoDB Atlas available hona chahiye before running the backend.
 
 ## Run the App
 
@@ -169,11 +178,28 @@ Server health endpoint:
 http://localhost:5000/api/health
 ```
 
-## Available Routes in Milestone 2
+## Auth API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/auth/register` | Create account |
+| POST | `/api/auth/login` | Login and set HttpOnly cookie |
+| POST | `/api/auth/logout` | Clear auth cookie |
+| GET | `/api/auth/me` | Get current authenticated user |
+| GET | `/api/users/profile` | Get user profile |
+| PATCH | `/api/users/profile` | Update name and preferences |
+| PATCH | `/api/users/preferences` | Update travel preferences |
+
+## Frontend Routes
+
+Public:
 
 - `/`
 - `/login`
 - `/register`
+
+Protected user routes:
+
 - `/dashboard`
 - `/planner`
 - `/destinations`
@@ -181,9 +207,10 @@ http://localhost:5000/api/health
 - `/my-trips`
 - `/assistant`
 - `/profile`
-- `/admin`
 
-These routes render placeholder pages only. Real feature logic comes in later milestones.
+Admin guarded placeholder:
+
+- `/admin`
 
 ## Scripts
 
@@ -202,8 +229,8 @@ npm run format:check
 | Milestone | Focus | Status |
 |---|---|---|
 | Milestone 1 | Discovery, planning, UI/UX, architecture, documentation | Complete |
-| Milestone 2 | Project initialization and app shell | Current |
-| Milestone 3 | Authentication and user profiles | Planned |
+| Milestone 2 | Project initialization and app shell | Complete |
+| Milestone 3 | Authentication and user profiles | Current |
 | Milestone 4 | Trip and destination data layer | Planned |
 | Milestone 5 | AI itinerary generation | Planned |
 | Milestone 6 | Budget planner and recommendations | Planned |
@@ -212,28 +239,16 @@ npm run format:check
 | Milestone 9 | Testing, security, production hardening | Planned |
 | Milestone 10 | Render deployment and release | Planned |
 
-## Milestone 2 Deliverables
+## Out of Scope for Milestone 3
 
-- React + Vite client initialized
-- Tailwind CSS configured
-- React Router app routes created
-- Public, auth, dashboard, and admin layouts created
-- Placeholder pages for planned product screens
-- Axios base client created
-- Express server initialized
-- `GET /api/health` endpoint created
-- Environment example files added
-- Root scripts, lint, and formatting setup added
-
-## Out of Scope for Milestone 2
-
-- JWT authentication implementation
-- MongoDB connection or schemas
 - OpenAI API integration
 - Trip CRUD APIs
+- Destination CRUD APIs
 - Budget calculation logic
 - Saved trips persistence
 - Admin analytics logic
+- Refresh token rotation
+- Password reset/email verification
 - Payment or subscription implementation
 
 ## Git Details
@@ -241,11 +256,11 @@ npm run format:check
 Recommended branch:
 
 ```bash
-milestone-2-app-shell
+milestone-3-auth-profiles
 ```
 
 Recommended commit message:
 
 ```bash
-git commit -m "chore: initialize milestone 2 app shell"
+git commit -m "feat: add milestone 3 authentication and profiles"
 ```
