@@ -2,7 +2,7 @@
 
 TravelAI Planner ek production-quality AI SaaS web application hai jo users ko personalized travel itineraries, destination discovery, travel budget planning, saved trips, user profiles, aur admin operations provide karega.
 
-> **Current Milestone:** Supabase migration after Milestone 4  
+> **Current Milestone:** Milestone 4 — Supabase Trip Data Layer  
 > **Important:** Project ab Express/Mongo backend ki jagah Supabase Auth + Supabase Postgres use karta hai. AI itinerary generation, OpenAI integration, advanced budget estimation, dashboard polish, and admin analytics abhi implement nahi hue.
 
 ## Project Overview
@@ -43,12 +43,12 @@ Travel planning normally multiple tabs, websites, notes, budget calculations, au
 
 ### Milestone 4
 
-- Trip table and user-owned trip CRUD
-- Destination table and active destination reads
-- Budget table and manual budget persistence
-- Saved trip table and user-owned saved-trip CRUD
+- Trip table and user-owned trip create/list/update/archive flows
+- Destination table, reusable seed data, filters, images, and active destination reads
+- Budget table with manual save, reload, and delete/reset flows
+- Saved trip table with save/list/update metadata/remove flows
 - Supabase RLS ownership rules
-- Minimal My Trips, Destinations, and Budget frontend data UI
+- Minimal My Trips, Destinations, Saved Trips, and Budget frontend data UI
 
 ## Installation
 
@@ -79,7 +79,7 @@ If your Supabase project gives a publishable key, `VITE_SUPABASE_PUBLISHABLE_KEY
 1. Create a Supabase project.
 2. Open the Supabase SQL editor.
 3. Run the SQL from `supabase/schema.sql`.
-4. Add optional destination seed rows from the commented section in that file.
+4. Run `supabase/seed.sql` to add dummy destination cards with images.
 5. Put your Supabase URL and anon/publishable key in `client/.env`.
 
 ## Run the App

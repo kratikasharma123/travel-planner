@@ -36,17 +36,23 @@ function budgetToForm(budget) {
   };
 }
 
+function getErrorMessage(apiError, fallback) {
+  return apiError?.response?.data?.message || apiError?.message || fallback;
+}
+
 function BudgetPage() {
   const { trips, isLoading: tripsLoading } = useTrips();
-  const { isLoading, error, loadBudget, saveBudget } = useBudget();
+  const { budget, isLoading, error, loadBudget, saveBudget, deleteBudget } = useBudget();
   const [selectedTripId, setSelectedTripId] = useState('');
   const [formData, setFormData] = useState(emptyBudget);
   const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useState('');
 
   async function handleTripSelect(event) {
     const tripId = event.target.value;
     setSelectedTripId(tripId);
     setSuccess('');
+    setFormError('');
 
     if (!tripId) {
       setFormData(emptyBudget);
@@ -73,15 +79,46 @@ function BudgetPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setSuccess('');
+    setFormError('');
 
     if (!selectedTripId) return;
 
-    const savedBudget = await saveBudget(selectedTripId, formData);
-    setFormData(budgetToForm(savedBudget));
-    setSuccess('Budget saved successfully.');
+    try {
+      const savedBudget = await saveBudget(selectedTripId, formData);
+      setFormData(budgetToForm(savedBudget));
+      setSuccess('Budget saved successfully.');
+    } catch (apiError) {
+      setFormError(getErrorMessage(apiError, 'Unable to save budget.'));
+    }
+  }
+
+  async function handleDeleteBudget() {
+    setSuccess('');
+    setFormError('');
+
+    if (!budget?._id) {
+      setFormData(emptyBudget);
+      setSuccess('Budget form reset.');
+      return;
+    }
+
+    try {
+      await deleteBudget(budget._id);
+      setFormData(emptyBudget);
+      setSuccess('Budget deleted successfully.');
+    } catch (apiError) {
+      setFormError(getErrorMessage(apiError, 'Unable to delete budget.'));
+    }
+  }
+
+  function handleResetForm() {
+    setFormData(budgetToForm(budget));
+    setSuccess('');
+    setFormError('');
   }
 
   const total = Object.values(formData.categories).reduce((sum, value) => sum + Number(value || 0), 0);
+  const selectedTrip = trips.find((trip) => trip._id === selectedTripId);
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
@@ -92,6 +129,7 @@ function BudgetPage() {
       </p>
 
       {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {formError && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{formError}</p>}
       {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
       <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
@@ -112,6 +150,12 @@ function BudgetPage() {
         </label>
 
         {!tripsLoading && trips.length === 0 && <p className="text-sm text-slate-600">Create a trip first from My Trips.</p>}
+        {selectedTrip && (
+          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+            <span className="font-semibold text-slate-950">Selected:</span> {selectedTrip.title}{' '}
+            {selectedTrip.customDestination?.name ? `• ${selectedTrip.customDestination.name}` : ''}
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categoryFields.map(([key, label]) => (
@@ -167,17 +211,48 @@ function BudgetPage() {
           />
         </label>
 
-        <div className="rounded-2xl bg-slate-50 p-4 font-semibold text-slate-950">
-          Total: {formData.currency.toUpperCase()} {total}
+        <div className="grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</p>
+            <p className="mt-1 text-2xl font-bold text-slate-950">
+              {formData.currency.toUpperCase()} {total}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Confidence</p>
+            <p className="mt-1 font-semibold capitalize text-slate-800">{formData.confidenceLevel}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Saved record</p>
+            <p className="mt-1 font-semibold text-slate-800">{budget ? 'Available' : 'Not saved yet'}</p>
+          </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={!selectedTripId || isLoading}
-          className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isLoading ? 'Saving...' : 'Save Budget'}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={!selectedTripId || isLoading}
+            className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isLoading ? 'Saving...' : 'Save Budget'}
+          </button>
+          <button
+            type="button"
+            onClick={handleResetForm}
+            disabled={isLoading}
+            className="rounded-full border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
+          >
+            Reset form
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteBudget}
+            disabled={!selectedTripId || isLoading}
+            className="rounded-full border border-rose-200 px-6 py-3 font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-70"
+          >
+            {budget ? 'Delete Budget' : 'Clear form'}
+          </button>
+        </div>
       </form>
     </section>
   );

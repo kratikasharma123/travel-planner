@@ -100,4 +100,15 @@ values
     'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=80',
     'active'
   )
-on conflict do nothing;
+on conflict (name, country) do update set
+  region = excluded.region,
+  description = excluded.description,
+  best_time_to_visit = excluded.best_time_to_visit,
+  cost_level = excluded.cost_level,
+  tags = excluded.tags,
+  popular_attractions = excluded.popular_attractions,
+  safety_notes = excluded.safety_notes,
+  family_suitability_notes = excluded.family_suitability_notes,
+  image_url = excluded.image_url,
+  status = excluded.status,
+  updated_at = now();

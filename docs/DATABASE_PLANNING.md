@@ -139,3 +139,9 @@ The executable schema, indexes, triggers, and RLS policies live in:
 ```txt
 supabase/schema.sql
 ```
+
+Dummy destination records with image URLs live in:
+
+```txt
+supabase/seed.sql
+```

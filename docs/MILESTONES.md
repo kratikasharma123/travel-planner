@@ -96,9 +96,10 @@ Current milestone.
 - `supabase/schema.sql`
 - Frontend trip/destination/budget/saved-trip services
 - Frontend `useTrips`, `useDestinations`, `useBudget`, `useSavedTrips` hooks
-- Minimal My Trips page with create/archive/save actions
-- Minimal Destinations page with read-only data list
-- Minimal Budget page with manual budget save
+- Minimal My Trips page with create/edit/archive/save actions
+- Saved Trips management section with list/update metadata/remove actions
+- Minimal Destinations page with read-only seeded data, images, and filters
+- Minimal Budget page with manual budget save/reload/delete actions
 
 ### Completion Criteria
 
@@ -110,9 +111,10 @@ Milestone 4 complete tab maana jayega jab:
 - Duplicate saved trip database unique constraint se block ho.
 - Budget own trip ke liye save/read/delete ho.
 - Destinations active records authenticated users read kar sake.
-- Frontend My Trips page basic trip data show/create/archive/save kare.
-- Frontend Destinations page empty/list state handle kare.
-- Frontend Budget page manual budget save kare.
+- Frontend My Trips page basic trip data show/create/edit/archive/save kare.
+- Frontend Saved Trips section list/update metadata/remove actions handle kare.
+- Frontend Destinations page empty/list/filter/image states handle kare.
+- Frontend Budget page manual budget save/reload/delete kare.
 - Lint and build pass hon.
 
 ### Explicitly Not Included

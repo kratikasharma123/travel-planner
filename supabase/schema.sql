@@ -88,6 +88,26 @@ create table if not exists public.saved_trips (
   unique (user_id, trip_id)
 );
 
+delete from public.destinations a
+using public.destinations b
+where a.name = b.name
+  and a.country = b.country
+  and a.created_at > b.created_at;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'destinations_name_country_key'
+      and conrelid = 'public.destinations'::regclass
+  ) then
+    alter table public.destinations
+      add constraint destinations_name_country_key unique (name, country);
+  end if;
+end;
+$$;
+
 create index if not exists destinations_status_idx on public.destinations(status);
 create index if not exists destinations_region_idx on public.destinations(region);
 create index if not exists destinations_cost_level_idx on public.destinations(cost_level);

@@ -17,7 +17,7 @@ Ye roadmap TravelAI Planner ko milestone-wise build karne ke liye designed hai. 
 | 1 | Discovery, Planning & Experience Design | Product, UX, architecture, data, and project structure planning | `milestone-1-discovery-planning` | Complete |
 | 2 | Project Initialization & App Shell | React/Vite app shell | `milestone-2-app-shell` | Complete |
 | 3 | Authentication & Profiles | Supabase Auth and user profile base | `milestone-3-auth-profiles` | Complete |
-| 4 | Supabase Trip Data Layer | Trip, destination, saved trip, and budget data implementation | `milestone-4-supabase-data-layer` | Current |
+| 4 | Supabase Trip Data Layer | Trip, destination, saved trip, and budget data implementation | `milestone-4` | Current |
 | 5 | AI Trip Planner | OpenAI-powered itinerary generation through secure functions | `milestone-5-ai-trip-planner` | Planned |
 | 6 | Budget Planner | Budget estimation and cost planning | `milestone-6-budget-planner` | Planned |
 | 7 | User Dashboard Experience | Dashboard, my trips, and trip detail UI | `milestone-7-dashboard-experience` | Planned |
