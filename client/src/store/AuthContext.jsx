@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as authService from '../services/authService.js';
+import { supabase } from '../services/supabaseClient.js';
 import * as userService from '../services/userService.js';
 import { AuthContext } from './authContext.js';
 
 function getErrorMessage(error, fallback = 'Something went wrong') {
-  return error?.response?.data?.message || fallback;
+  return error?.response?.data?.message || error?.message || fallback;
 }
 
 export function AuthProvider({ children }) {
@@ -26,19 +27,38 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function bootstrapAuth() {
       setIsLoading(true);
       await refreshCurrentUser();
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     }
 
     bootstrapAuth();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+
+      if (session?.user) {
+        setTimeout(() => {
+          if (isMounted) refreshCurrentUser();
+        }, 0);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      data.subscription.unsubscribe();
+    };
   }, [refreshCurrentUser]);
 
   const register = useCallback(async (payload) => {
     const data = await authService.register(payload);
     setUser(data.user);
-    return data.user;
+    return data;
   }, []);
 
   const login = useCallback(async (payload) => {

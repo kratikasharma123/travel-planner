@@ -1,102 +1,77 @@
 # Database Planning — TravelAI Planner
 
-Ye document MongoDB database planning ke liye hai. Milestone 1 mein schemas implement nahi kiye ja rahe; sirf entities, relationships, and data ownership define kiye gaye hain.
+Ye document TravelAI Planner ke current Supabase Postgres database plan ko define karta hai.
 
 ## Database Choice
 
-TravelAI Planner MongoDB use karega because travel plans, AI outputs, user preferences, and assistant conversations semi-structured ho sakte hain. MongoDB flexible documents ke liye suitable hai.
+TravelAI Planner ab Supabase Postgres use karta hai. Supabase Auth identity manage karta hai, Postgres relational app data store karta hai, aur Row Level Security user-owned access enforce karti hai.
 
-## Planned Collections
+## Current Tables
 
-| Collection | Purpose |
+| Table | Purpose |
 |---|---|
-| Users | Account, authentication identity, preferences, role |
-| Trips | User-created travel plans and itinerary metadata |
-| Destinations | Destination discovery data and recommendation metadata |
-| Budgets | Trip-level budget estimates and category breakdowns |
-| Saved Trips | User saved/archived trip references and organization |
-| AI Conversations | Trip-specific AI assistant chat history |
-| AI Requests | AI usage tracking, request metadata, cost monitoring |
+| `profiles` | Account profile, role, status, preferences linked to `auth.users` |
+| `trips` | User-created travel plans and itinerary metadata |
+| `destinations` | Destination discovery data and recommendation metadata |
+| `budgets` | Trip-level budget estimates and category breakdowns |
+| `saved_trips` | User saved/organized trip references |
 
-## Entity: Users
+Future AI tables may include `ai_conversations` and `ai_requests`.
+
+## Entity: Profiles
 
 ### Purpose
 
-Platform users ka core account record.
+Supabase Auth user ka app-level profile record.
 
-### Planned Data
+### Data
 
-- Name
-- Email
-- Password hash in future implementation
-- Role: user/admin
-- Travel preferences
-- Preferred budget range
-- Account status
-- Created date
-- Last login date
-
-### Relationships
-
-```txt
-User 1 ──── many Trips
-User 1 ──── many Saved Trips
-User 1 ──── many AI Conversations
-User 1 ──── many AI Requests
-```
+- `id` references `auth.users(id)`
+- `name`
+- `role`: user/admin
+- `status`: active/disabled
+- `travel_preferences` JSON
+- `last_login_at`
+- timestamps
 
 ## Entity: Trips
 
 ### Purpose
 
-Generated or manually saved travel plan ka main record.
+Generated ya manually saved travel plan ka main record.
 
-### Planned Data
+### Data
 
-- Owner user reference
-- Destination reference or custom destination
-- Trip title
+- Owner `user_id`
+- Optional `destination_id`
+- `custom_destination` JSON
+- Title
 - Dates or duration
 - Traveler count
 - Travel style
 - Interests
-- AI-generated itinerary content
-- Trip status: draft/saved/archived
-- Created and updated dates
-
-### Relationships
-
-```txt
-Trip many ──── 1 User
-Trip 1 ──── 1 Budget
-Trip 1 ──── many AI Conversations
-Trip many ──── 1 Destination optional
-```
+- Notes
+- Status: draft/saved/archived
+- timestamps
 
 ## Entity: Destinations
 
 ### Purpose
 
-Destination Discovery feature ke liye curated or AI-assisted destination information.
+Destination Discovery feature ke liye curated destination information.
 
-### Planned Data
+### Data
 
 - Name
 - Country/region
 - Description
 - Best time to visit
-- Estimated cost level
+- Cost level
 - Tags/interests
 - Popular attractions
 - Safety/family suitability notes
-- Image metadata or placeholder
-
-### Relationships
-
-```txt
-Destination 1 ──── many Trips
-Destination 1 ──── many recommendation results
-```
+- Image URL
+- Status
 
 ## Entity: Budgets
 
@@ -104,148 +79,63 @@ Destination 1 ──── many recommendation results
 
 Trip ke cost estimate ko category-wise store karna.
 
-### Planned Data
+### Data
 
-- Trip reference
-- User reference
+- Owner `user_id`
+- `trip_id`
 - Currency
-- Accommodation estimate
-- Food estimate
-- Transport estimate
-- Activities estimate
-- Miscellaneous estimate
-- Emergency buffer
+- Category estimates JSON
 - Total estimate
-- Budget confidence level
-
-### Relationships
-
-```txt
-Budget many ──── 1 User
-Budget 1 ──── 1 Trip
-```
+- Confidence level
+- Notes
 
 ## Entity: Saved Trips
 
 ### Purpose
 
-User ke saved/organized travel plans ko manage karna. Ye trips ke around user-specific saved state maintain karega.
+User ke saved/organized travel plans ko manage karna.
 
-### Planned Data
+### Data
 
-- User reference
-- Trip reference
+- Owner `user_id`
+- `trip_id`
 - Saved title
 - Notes
 - Tags
 - Folder/category optional
 - Saved date
 
-### Relationships
-
-```txt
-Saved Trip many ──── 1 User
-Saved Trip many ──── 1 Trip
-```
-
-## Entity: AI Conversations
-
-### Purpose
-
-AI Travel Assistant ke chat sessions store karna, especially trip-specific context ke saath.
-
-### Planned Data
-
-- User reference
-- Trip reference optional
-- Conversation title
-- Messages
-- AI model metadata
-- Created and updated dates
-
-### Relationships
-
-```txt
-AI Conversation many ──── 1 User
-AI Conversation many ──── 1 Trip optional
-```
-
-## Entity: AI Requests
-
-### Purpose
-
-AI usage, monitoring, rate limits, and SaaS usage tracking ke liye metadata.
-
-### Planned Data
-
-- User reference
-- Request type: itinerary/destination/budget/chat
-- Token usage estimate in future
-- Status: success/failed
-- Error category optional
-- Created date
-
-### Relationships
-
-```txt
-AI Request many ──── 1 User
-AI Request many ──── 1 Trip optional
-```
-
 ## Relationship Diagram
 
 ```txt
-+---------+        +--------+        +----------+
-| Users   | 1    * | Trips  | 1    1 | Budgets  |
-+---------+--------+--------+--------+----------+
-     |                 |
-     |                 | *
-     |                 |
-     |            +--------------+
-     |            | Destinations |
-     |            +--------------+
+auth.users 1 ──── 1 profiles
      |
-     | 1    * +-------------+
-     +--------| SavedTrips  |
-     |        +-------------+
+     | 1
+     |      *
+     +──────── trips ──────── * destinations optional
+     |          |
+     |          | 1
+     |          | 1
+     |       budgets
      |
-     | 1    * +------------------+
-     +--------| AI Conversations |
-     |        +------------------+
-     |
-     | 1    * +-------------+
-     +--------| AI Requests |
-              +-------------+
+     | 1
+     |      *
+     +──────── saved_trips ─── * trips
 ```
 
-## Data Ownership Rules
+## Ownership and RLS Rules
 
-- Har trip ek user se linked hoga.
-- User sirf apne trips dekh paayega.
-- Admin aggregate metrics dekh paayega.
-- AI conversations user-owned honge.
-- AI API secrets database mein store nahi honge.
+- Users can select/update only their own `profiles` row.
+- Users can create/read/update/delete only their own `trips`.
+- Users can create/read/update/delete only their own `budgets` for trips they own.
+- Users can create/read/update/delete only their own `saved_trips` for trips they own.
+- Authenticated users can read active `destinations`.
+- Service role keys are not used in frontend code.
 
-## Index Planning
+## Schema Source
 
-Future implementation mein likely indexes:
+The executable schema, indexes, triggers, and RLS policies live in:
 
-| Collection | Index Need |
-|---|---|
-| Users | email unique |
-| Trips | userId, destination, status, createdAt |
-| Saved Trips | userId + tripId |
-| AI Conversations | userId, tripId |
-| AI Requests | userId, requestType, createdAt |
-| Destinations | tags, region, costLevel |
-
-## Security Planning
-
-- Password plain text kabhi store nahi hoga.
-- User-owned records access control ke through protect honge.
-- Admin data access role-based hoga.
-- AI conversations may contain sensitive travel preferences, so access strictly user-scoped hoga.
-
-## Milestone 1 Boundary
-
-Is document mein schemas, Mongoose models, indexes, ya database connection code implement nahi kiya gaya hai. Ye sirf architecture-level planning hai.
+```txt
+supabase/schema.sql
+```

@@ -1,12 +1,185 @@
-import PlaceholderPage from '../components/PlaceholderPage.jsx';
+import { useState } from 'react';
+import { useBudget } from '../hooks/useBudget.js';
+import { useTrips } from '../hooks/useTrips.js';
+
+const categoryFields = [
+  ['accommodation', 'Accommodation'],
+  ['food', 'Food'],
+  ['transport', 'Transport'],
+  ['activities', 'Activities'],
+  ['miscellaneous', 'Miscellaneous'],
+  ['emergencyBuffer', 'Emergency Buffer'],
+];
+
+const emptyBudget = {
+  currency: 'USD',
+  confidenceLevel: 'low',
+  notes: '',
+  categories: {
+    accommodation: 0,
+    food: 0,
+    transport: 0,
+    activities: 0,
+    miscellaneous: 0,
+    emergencyBuffer: 0,
+  },
+};
+
+function budgetToForm(budget) {
+  if (!budget) return emptyBudget;
+
+  return {
+    currency: budget.currency || 'USD',
+    confidenceLevel: budget.confidenceLevel || 'low',
+    notes: budget.notes || '',
+    categories: { ...emptyBudget.categories, ...budget.categories },
+  };
+}
 
 function BudgetPage() {
+  const { trips, isLoading: tripsLoading } = useTrips();
+  const { isLoading, error, loadBudget, saveBudget } = useBudget();
+  const [selectedTripId, setSelectedTripId] = useState('');
+  const [formData, setFormData] = useState(emptyBudget);
+  const [success, setSuccess] = useState('');
+
+  async function handleTripSelect(event) {
+    const tripId = event.target.value;
+    setSelectedTripId(tripId);
+    setSuccess('');
+
+    if (!tripId) {
+      setFormData(emptyBudget);
+      return;
+    }
+
+    const loadedBudget = await loadBudget(tripId);
+    setFormData(budgetToForm(loadedBudget));
+  }
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setFormData((current) => ({ ...current, [name]: value }));
+  }
+
+  function handleCategoryChange(event) {
+    const { name, value } = event.target;
+    setFormData((current) => ({
+      ...current,
+      categories: { ...current.categories, [name]: Number(value) },
+    }));
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSuccess('');
+
+    if (!selectedTripId) return;
+
+    const savedBudget = await saveBudget(selectedTripId, formData);
+    setFormData(budgetToForm(savedBudget));
+    setSuccess('Budget saved successfully.');
+  }
+
+  const total = Object.values(formData.categories).reduce((sum, value) => sum + Number(value || 0), 0);
+
   return (
-    <PlaceholderPage
-      title="Budget Planner"
-      description="Budget planner shell ready hai. Real category-wise budget estimation Milestone 6 mein implement hoga."
-      plannedItems={['Accommodation estimate', 'Food estimate', 'Transport estimate', 'Activities estimate']}
-    />
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
+      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Manual budget data</p>
+      <h1 className="mt-4 text-3xl font-bold text-slate-950">Budget Planner</h1>
+      <p className="mt-3 text-slate-600">
+        Save manual budget categories for a trip. Automatic estimation is planned for Milestone 6.
+      </p>
+
+      {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
+
+      <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          Select trip
+          <select
+            value={selectedTripId}
+            onChange={handleTripSelect}
+            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+          >
+            <option value="">Choose a trip</option>
+            {trips.map((trip) => (
+              <option key={trip._id} value={trip._id}>
+                {trip.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {!tripsLoading && trips.length === 0 && <p className="text-sm text-slate-600">Create a trip first from My Trips.</p>}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {categoryFields.map(([key, label]) => (
+            <label key={key} className="grid gap-2 text-sm font-medium text-slate-700">
+              {label}
+              <input
+                type="number"
+                min="0"
+                name={key}
+                value={formData.categories[key]}
+                onChange={handleCategoryChange}
+                className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium text-slate-700">
+            Currency
+            <input
+              name="currency"
+              value={formData.currency}
+              onChange={handleChange}
+              maxLength={3}
+              className="rounded-2xl border border-slate-200 px-4 py-3 uppercase outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium text-slate-700">
+            Confidence
+            <select
+              name="confidenceLevel"
+              value={formData.confidenceLevel}
+              onChange={handleChange}
+              className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+        </div>
+
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          Notes
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            rows="3"
+            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            placeholder="Manual assumptions for this budget"
+          />
+        </label>
+
+        <div className="rounded-2xl bg-slate-50 p-4 font-semibold text-slate-950">
+          Total: {formData.currency.toUpperCase()} {total}
+        </div>
+
+        <button
+          type="submit"
+          disabled={!selectedTripId || isLoading}
+          className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isLoading ? 'Saving...' : 'Save Budget'}
+        </button>
+      </form>
+    </section>
   );
 }
 

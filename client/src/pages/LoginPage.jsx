@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import PasswordInput from '../components/PasswordInput.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 
 function LoginPage() {
@@ -49,19 +50,20 @@ function LoginPage() {
             value={formData.email}
             onChange={handleChange}
             required
+            autoComplete="email"
             className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
             placeholder="you@example.com"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Password
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             value={formData.password}
             onChange={handleChange}
             required
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            autoComplete="current-password"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
             placeholder="Enter your password"
           />
         </label>

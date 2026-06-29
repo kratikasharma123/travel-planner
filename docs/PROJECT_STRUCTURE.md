@@ -1,8 +1,8 @@
 # Project Structure — TravelAI Planner
 
-Ye document TravelAI Planner ke professional MERN SaaS folder structure ko define karta hai. Milestone 1 mein folders planning ke liye create kiye gaye hain; production code later milestones mein add hoga.
+Ye document TravelAI Planner ke current React + Supabase folder structure ko define karta hai.
 
-## Recommended GitHub Folder Structure
+## Current GitHub Folder Structure
 
 ```txt
 TravelAI-Planner/
@@ -10,7 +10,6 @@ TravelAI-Planner/
 │   └── src/
 │       ├── assets/
 │       ├── components/
-│       ├── features/
 │       ├── hooks/
 │       ├── layouts/
 │       ├── pages/
@@ -19,23 +18,11 @@ TravelAI-Planner/
 │       ├── store/
 │       ├── styles/
 │       └── utils/
-├── server/
-│   └── src/
-│       ├── config/
-│       ├── controllers/
-│       ├── middleware/
-│       ├── models/
-│       ├── routes/
-│       ├── services/
-│       ├── utils/
-│       └── validators/
+├── supabase/
+│   └── schema.sql
 ├── docs/
 ├── assets/
-│   ├── brand/
-│   └── wireframes/
 ├── scripts/
-├── .github/
-│   └── workflows/
 ├── .gitignore
 └── README.md
 ```
@@ -47,42 +34,32 @@ TravelAI-Planner/
 | `README.md` | Project overview, setup, roadmap, and documentation index |
 | `.gitignore` | Ignore dependencies, build outputs, env files, logs, editor files |
 | `docs/` | Product, UX, architecture, database, API, and milestone documentation |
+| `supabase/schema.sql` | Supabase tables, triggers, indexes, and RLS policies |
 | `assets/` | Non-code brand assets and planning wireframes |
 | `scripts/` | Future automation scripts |
-| `.github/workflows/` | Future CI/CD workflow files |
 
 ## Client Structure
 
-`client/` future React + Vite frontend ke liye reserved hai.
+`client/` React + Vite frontend ke liye hai.
 
 | Path | Purpose |
 |---|---|
 | `client/src/assets/` | UI images, icons, illustrations, logo files |
-| `client/src/components/` | Reusable presentational components like Button, Card, Modal |
-| `client/src/features/` | Feature-specific modules like trip planner, budget planner, assistant |
+| `client/src/components/` | Reusable presentational components |
 | `client/src/hooks/` | Custom React hooks like `useAuth`, `useTrips`, `useBudget` |
 | `client/src/layouts/` | Page shells like PublicLayout, AuthLayout, DashboardLayout |
 | `client/src/pages/` | Route-level pages like Landing, Login, Dashboard, MyTrips |
-| `client/src/routes/` | Route definitions and protected route planning |
-| `client/src/services/` | Axios clients and API service functions |
-| `client/src/store/` | Global state management planning |
+| `client/src/routes/` | Route definitions and protected route guards |
+| `client/src/services/` | Supabase client and data service functions |
+| `client/src/store/` | Global state/context such as AuthProvider |
 | `client/src/styles/` | Tailwind/global styles and design tokens |
 | `client/src/utils/` | Frontend utility functions |
 
-## Server Structure
-
-`server/` future Node.js + Express backend ke liye reserved hai.
+## Supabase Structure
 
 | Path | Purpose |
 |---|---|
-| `server/src/config/` | Environment, database, JWT, OpenAI, app config planning |
-| `server/src/controllers/` | Request-response handlers in future implementation |
-| `server/src/middleware/` | Auth, validation, error handling, rate limit middleware |
-| `server/src/models/` | MongoDB/Mongoose models in future implementation |
-| `server/src/routes/` | Express route files in future implementation |
-| `server/src/services/` | Business logic, AI service, budget service, trip service |
-| `server/src/utils/` | Backend helpers like token, logger, response formatter |
-| `server/src/validators/` | Request validation schemas in future implementation |
+| `supabase/schema.sql` | SQL to create `profiles`, `destinations`, `trips`, `budgets`, `saved_trips`, triggers, indexes, and RLS policies |
 
 ## Docs Structure
 
@@ -91,30 +68,21 @@ TravelAI-Planner/
 | `docs/PRD_SUMMARY.md` | Product requirements summary |
 | `docs/PROJECT_ROADMAP.md` | Milestone-wise roadmap |
 | `docs/MILESTONES.md` | Milestone scope and completion criteria |
-| `docs/TECH_STACK.md` | Planned technical stack |
+| `docs/TECH_STACK.md` | Technical stack |
 | `docs/FEATURES.md` | Feature planning and priorities |
 | `docs/USER_FLOW.md` | User journeys and flows |
-| `docs/DATABASE_PLANNING.md` | MongoDB collections and relationships planning |
-| `docs/API_PLANNING.md` | Future REST API endpoint planning |
+| `docs/DATABASE_PLANNING.md` | Supabase Postgres tables and relationships |
+| `docs/API_PLANNING.md` | Supabase service/data access planning |
 | `docs/UI_UX_DESIGN.md` | Page-level UI/UX planning |
 | `docs/DESIGN_SYSTEM.md` | Visual design system planning |
 | `docs/SYSTEM_ARCHITECTURE.md` | Architecture diagrams and component responsibilities |
 
-## Why Client/Server Naming?
+## Why No `server/` Folder?
 
-Production MERN projects mein `client/` and `server/` naming clean separation provide karti hai:
-
-- `client/` browser-facing React application
-- `server/` backend API and business logic
-- Root docs and config project-level concerns ke liye
+The project now uses Supabase as the backend. Supabase provides Auth, Postgres, hosted APIs, and Row Level Security, so the previous Express/Mongo backend source has been removed.
 
 ## Future Scalability Notes
 
-- `features/` frontend ko feature-based architecture support karega.
-- `services/` backend and frontend dono mein logic separation maintain karega.
-- `validators/` input safety and API consistency ke liye useful hoga.
-- `docs/` project decisions ko traceable banayega.
-
-## Milestone 1 Boundary
-
-Ye folders placeholders ke saath create hain. Full React components, Express APIs, database schemas, and business logic later milestones mein implement honge.
+- AI features should use Supabase Edge Functions or another secure backend function layer so API keys are not exposed in frontend code.
+- `client/src/services/` keeps Supabase queries centralized.
+- `supabase/schema.sql` keeps database rules reviewable and reproducible.

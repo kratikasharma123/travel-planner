@@ -1,6 +1,6 @@
 # Milestones — TravelAI Planner
 
-TravelAI Planner milestone-wise build hoga. Har milestone separate GitHub branch par complete hoga, review ke baad `main` branch mein merge hoga.
+TravelAI Planner milestone-wise build hoga. Current implementation Supabase backend-as-a-service use karta hai.
 
 ## Milestone Workflow
 
@@ -22,10 +22,6 @@ Merge into main
 
 ## Milestone 1 — Discovery, Planning & Experience Design
 
-### Objective
-
-Senior Product Manager, System Architect, aur UI/UX Designer mindset se project ka complete planning foundation create karna.
-
 ### Status
 
 Complete.
@@ -38,15 +34,11 @@ Complete.
 - UI/UX page planning
 - Design system planning
 - Database entity planning
-- Future API planning
+- Data access planning
 - System architecture planning
-- Professional MERN folder structure
+- Professional project folder structure
 
 ## Milestone 2 — Project Initialization & App Shell
-
-### Objective
-
-Client and server apps initialize karna with basic runnable app shell.
 
 ### Status
 
@@ -57,18 +49,33 @@ Complete.
 - React + Vite setup
 - Tailwind CSS setup
 - React Router setup
-- Axios base client setup
-- Express server setup
-- Health endpoint
+- Frontend service structure
 - Environment example files
 - Basic lint and format setup
 - Placeholder pages and layouts
 
 ## Milestone 3 — Authentication & User Profiles
 
+### Status
+
+Complete with Supabase.
+
+### Scope Completed
+
+- User registration
+- User login/logout
+- Current user session
+- Supabase Auth integration
+- `profiles` table for user profile persistence
+- Protected frontend routes
+- User profile get/update
+- Travel preferences update
+
+## Milestone 4 — Trip Data Layer
+
 ### Objective
 
-JWT-based secure user account system implement karna with user profiles and protected routes.
+Trips, destinations, budgets, saved trips ke Supabase tables and CRUD foundation implement karna.
 
 ### Status
 
@@ -76,95 +83,59 @@ Current milestone.
 
 ### Scope
 
-- User registration
-- User login
-- User logout
-- Current user session endpoint
-- JWT in HttpOnly cookie
-- Password hashing
-- MongoDB connection for user persistence
-- User model only
-- Protected backend middleware
-- Protected frontend routes
-- Public-only login/register routes
-- Basic admin route guard
-- User profile get/update
-- Travel preferences update
+- Supabase `trips` table
+- Supabase `destinations` table
+- Supabase `budgets` table
+- Supabase `saved_trips` table
+- Supabase RLS ownership rules
+- Frontend trip/destination/budget/saved-trip services
+- Minimal My Trips, Destinations, and Budget pages
 
 ### Deliverables
 
-- MongoDB connection foundation
-- `User` model
-- Password utility
-- Auth token utility
-- Auth middleware
-- Auth validators
-- User validators
-- Auth service/controller/routes
-- User service/controller/routes
-- Auth-aware Axios client
-- Auth context and hook
-- Protected route wrappers
-- Login and register forms
-- Profile form
-- Dashboard logout
-- Updated environment examples
+- `supabase/schema.sql`
+- Frontend trip/destination/budget/saved-trip services
+- Frontend `useTrips`, `useDestinations`, `useBudget`, `useSavedTrips` hooks
+- Minimal My Trips page with create/archive/save actions
+- Minimal Destinations page with read-only data list
+- Minimal Budget page with manual budget save
 
 ### Completion Criteria
 
-Milestone 3 complete tab maana jayega jab:
+Milestone 4 complete tab maana jayega jab:
 
-- User register kar sake.
-- Password hash form mein store ho.
-- User login kar sake.
-- Server HttpOnly JWT cookie set kare.
-- User logout kar sake and cookie clear ho.
-- `/api/auth/me` authenticated user return kare.
-- `/api/users/profile` protected ho.
-- User basic profile update kar sake.
-- Frontend protected routes logged-out users ko `/login` bhejein.
-- Login/register pages authenticated users ko dashboard bhejein.
+- Authenticated user trip create/list/read/update/archive kar sake.
+- User sirf apne trips access kar sake through RLS.
+- SavedTrip create/list/update/delete protected ho.
+- Duplicate saved trip database unique constraint se block ho.
+- Budget own trip ke liye save/read/delete ho.
+- Destinations active records authenticated users read kar sake.
+- Frontend My Trips page basic trip data show/create/archive/save kare.
+- Frontend Destinations page empty/list state handle kare.
+- Frontend Budget page manual budget save kare.
 - Lint and build pass hon.
 
 ### Explicitly Not Included
 
-- AI/OpenAI integration
-- Trip CRUD
-- Destination CRUD
-- Budget calculation/storage
-- Saved trips persistence
-- Admin analytics/user management
-- Refresh token rotation
-- Password reset/email verification
-- OAuth/social login
+- OpenAI integration
+- AI-generated itinerary function
+- Advanced budget estimation algorithm
+- Polished trip detail UI
+- Admin destination management
+- Admin analytics
 - Payment/subscriptions
-
-## Milestone 4 — Trip Data Layer
-
-### Objective
-
-Trips, destinations, budgets, saved trips ke database models and CRUD foundation implement karna.
-
-### Planned Scope
-
-- Trip models
-- Destination models
-- Budget models
-- Saved trip models
-- Trip CRUD
-- Saved trip CRUD
-- User ownership rules
 
 ## Milestone 5 — AI Trip Planner
 
 ### Objective
 
-OpenAI-powered itinerary generation implement karna.
+OpenAI-powered itinerary generation implement karna through a secure server-side function layer.
 
 ### Planned Scope
 
+- Secure function/edge function setup
 - Prompt builder
-- AI itinerary endpoint
+- AI itinerary generation
 - Structured response
 - Error handling
 - Usage tracking
@@ -178,9 +149,9 @@ Budget estimation and category breakdown feature implement karna.
 ### Planned Scope
 
 - Budget estimation flow
-- Budget storage
-- Budget UI integration
-- Save with trip
+- Budget UI polish
+- Recommendation logic
+- Save with trip improvements
 
 ## Milestone 7 — Dashboard & My Trips
 
@@ -191,7 +162,7 @@ User dashboard and saved trips product experience polish karna.
 ### Planned Scope
 
 - Dashboard UI
-- My Trips
+- My Trips polish
 - Trip detail
 - Search/filter trips
 - Empty states
@@ -204,7 +175,7 @@ Discovery and conversational assistant features implement karna.
 
 ### Planned Scope
 
-- Destination recommendation UI/API
+- Destination recommendation UI/function
 - AI assistant chat
 - Conversation history
 - Trip-context assistant
@@ -221,40 +192,39 @@ Admin platform overview and usage controls add karna.
 - User overview
 - Trip analytics
 - AI usage analytics
-- Role-based access
+- Role-based access policies
 
 ## Milestone 10 — Testing, Security & Deployment
 
 ### Objective
 
-Production readiness and Render deployment.
+Production readiness and deployment.
 
 ### Planned Scope
 
 - Validation hardening
-- Rate limiting
-- Security headers
+- RLS policy verification
 - Tests
-- Render deployment
-- MongoDB Atlas setup
+- Static frontend deployment
+- Supabase production setup
 - Production verification
 
-## Recommended Milestone 3 Git Details
+## Recommended Milestone 4 Git Details
 
 ### Branch Name
 
 ```bash
-milestone-3-auth-profiles
+milestone-4-supabase-data-layer
 ```
 
 ### Commit Message
 
 ```bash
-feat: add milestone 3 authentication and profiles
+git commit -m "feat: migrate data layer to supabase"
 ```
 
 ### PR Title
 
 ```txt
-Milestone 3: Authentication & User Profiles
+Milestone 4: Supabase Data Layer
 ```

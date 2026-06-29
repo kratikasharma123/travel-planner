@@ -1,10 +1,10 @@
 # System Architecture — TravelAI Planner
 
-Ye document TravelAI Planner ka high-level architecture define karta hai. Milestone 1 mein architecture plan kiya ja raha hai; code implementation later milestones mein hogi.
+Ye document TravelAI Planner ka current high-level architecture define karta hai after moving from custom Express/Mongo backend to Supabase.
 
 ## Architecture Overview
 
-TravelAI Planner separated frontend/backend MERN architecture follow karega. Frontend user experience handle karega, backend business logic and secure integrations handle karega, MongoDB data persist karega, aur OpenAI API AI recommendations generate karegi.
+TravelAI Planner React frontend directly Supabase Auth and Supabase Postgres se connect karta hai through `@supabase/supabase-js`. Supabase RLS user-owned data protect karti hai.
 
 ```txt
 +-------------------+
@@ -17,19 +17,12 @@ TravelAI Planner separated frontend/backend MERN architecture follow karega. Fro
 | Tailwind UI       |
 +---------+---------+
           |
-          | HTTPS REST API
+          | Supabase JS client
           v
-+-------------------+
-| Node + Express    |
-| API Server        |
-+----+---------+----+
-     |         |
-     |         |
-     v         v
-+---------+   +----------------+
-| MongoDB |   | OpenAI API     |
-| Atlas   |   | AI Generation  |
-+---------+   +----------------+
++-----------------------------+
+| Supabase                    |
+| Auth + Postgres + RLS       |
++-----------------------------+
 ```
 
 ## Frontend Architecture
@@ -39,200 +32,128 @@ TravelAI Planner separated frontend/backend MERN architecture follow karega. Fro
 - Landing page and marketing UX
 - Authentication screens
 - Dashboard and navigation
-- AI planner form
+- AI planner shell
 - Destination discovery interface
 - Budget planner interface
 - Saved trips UI
-- AI assistant chat UI
+- AI assistant shell
 - Profile and admin pages
-- API communication through Axios
+- Supabase communication through service modules
 
-### Planned Frontend Flow
+### Frontend Flow
 
 ```txt
-Pages → Components → Hooks/Services → Backend API
+Pages → Hooks → Services → Supabase Auth/Postgres
 ```
 
-### Frontend Security Rule
-
-AI API key, JWT secret, database URL, and other secrets frontend mein expose nahi honge.
-
-## Backend Architecture
+## Supabase Architecture
 
 ### Responsibilities
 
-- REST API endpoints
-- Authentication and authorization
-- User, trip, destination, budget, saved trip operations
-- AI prompt orchestration
-- OpenAI API communication
-- Input validation
-- Error handling
-- Usage tracking
-
-### Planned Backend Layers
-
-```txt
-Routes
-  ↓
-Middleware
-  ↓
-Controllers
-  ↓
-Services
-  ↓
-Models / External APIs
-```
-
-## Database Architecture
-
-### MongoDB Responsibilities
-
-- User records
-- Trip records
+- Auth registration/login/logout/session
+- Profile persistence
+- User-owned trip, budget, and saved-trip data
 - Destination records
-- Budget estimates
-- Saved trip mappings
-- AI conversation history
-- AI request usage logs
+- Row Level Security authorization
+- Hosted Postgres queries
+
+### Current Tables
 
 ```txt
-MongoDB Collections
-├── users
+Supabase Postgres
+├── profiles
 ├── trips
 ├── destinations
 ├── budgets
-├── savedTrips
-├── aiConversations
-└── aiRequests
+└── saved_trips
 ```
 
 ## AI Service Architecture
 
-OpenAI API calls backend service layer se honge.
+AI features are planned for future milestones. Because AI provider keys must not be exposed in the browser, AI calls should be implemented later with a secure server-side layer such as Supabase Edge Functions.
 
 ```txt
 User Input
   ↓
 Frontend Form
   ↓
-Backend Validation
-  ↓
-AI Prompt Builder
+Secure Function Layer (future)
   ↓
 OpenAI API
-  ↓
-Response Normalizer
   ↓
 Frontend Result UI
 ```
 
-### AI Safety Planning
-
-- Prompt templates controlled by backend
-- User input validated before AI call
-- AI response normalized before storing/displaying
-- AI failures handled with retry/error UX
-- Usage tracked for SaaS limits
-
 ## Authentication Architecture
 
-JWT-based auth planned hai.
+Supabase Auth handles sessions.
 
 ```txt
 Register/Login
   ↓
-Backend validates credentials
+Supabase Auth creates browser session
   ↓
-JWT generated
+React AuthProvider reads session/profile
   ↓
-Frontend stores session token according to final security strategy
+Protected routes allow authenticated users
   ↓
-Protected API requests send token
-  ↓
-Backend middleware verifies token
-  ↓
-Controller returns user-scoped data
+Supabase RLS enforces row ownership
 ```
 
 ## Authorization Planning
 
 | Role | Access |
 |---|---|
-| Guest | Landing, login, register, public destination preview |
-| User | Dashboard, planner, budget, saved trips, assistant, profile |
-| Admin | Admin dashboard, platform usage, user/trip overview |
+| Guest | Landing, login, register |
+| User | Dashboard, planner, destinations, budget, saved trips, assistant, profile |
+| Admin | Admin dashboard placeholder; deeper admin policies planned later |
 
-## Deployment Architecture on Render
+## Deployment Architecture
 
 ```txt
 GitHub Repository
       ↓
-Render Frontend Service / Static Site
+Static Frontend Hosting
       ↓
 React App served to users
-
-GitHub Repository
       ↓
-Render Backend Web Service
-      ↓
-Express API connects to MongoDB Atlas and OpenAI
-
-MongoDB Atlas
-      ↑
-Backend only
-
-OpenAI API
-      ↑
-Backend only
+Supabase Auth/Postgres/RLS
 ```
 
 ## Environment Planning
 
-Future deployment will need:
+Frontend needs:
 
 | Variable | Purpose |
 |---|---|
-| `NODE_ENV` | Runtime environment |
-| `PORT` | Backend server port |
-| `MONGO_URI` | MongoDB Atlas connection string |
-| `JWT_SECRET` | JWT signing secret |
-| `OPENAI_API_KEY` | OpenAI API access |
-| `CLIENT_URL` | Frontend URL for CORS |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon or publishable key |
+
+`VITE_SUPABASE_PUBLISHABLE_KEY` is also supported.
 
 ## Request Lifecycle Example
 
 ```txt
-User clicks Generate Itinerary
+User creates trip
   ↓
-React sends POST /api/ai/itinerary
+React form calls useTrips hook
   ↓
-Express auth middleware verifies JWT
+tripService inserts row into Supabase `trips`
   ↓
-Validation checks request body
+RLS checks auth.uid() = user_id
   ↓
-AI service builds prompt
+Supabase returns created row
   ↓
-OpenAI returns itinerary
-  ↓
-Backend formats response
-  ↓
-Trip optionally saved in MongoDB
-  ↓
-React displays itinerary cards
+React refreshes My Trips UI
 ```
 
 ## Non-Functional Requirements Planning
 
 | Area | Plan |
 |---|---|
-| Security | JWT, validation, rate limiting, no frontend secrets |
-| Scalability | Separate client/server, service layer, usage tracking |
-| Reliability | Consistent error response, retries for AI failure planning |
-| Maintainability | Feature-based frontend, layered backend |
-| Performance | Lazy loading pages, optimized API responses in future |
-| Observability | AI request logs, error logs, admin usage metrics |
-
-## Milestone 1 Boundary
-
-No architecture code, deployment config, routes, or services are implemented in this milestone. Ye document future implementation ko guide karega.
+| Security | Supabase Auth, RLS, no service-role key in frontend |
+| Scalability | Hosted Supabase database and static frontend |
+| Reliability | Service-layer error normalization for UI fallbacks |
+| Maintainability | Route pages, hooks, services, and schema SQL kept separate |
+| Performance | Query pagination and indexed ownership/filter columns |
+| Observability | Future Supabase logs and AI usage tracking |

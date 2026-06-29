@@ -1,25 +1,62 @@
-import apiClient from './apiClient.js';
+import { supabase } from './supabaseClient.js';
+import { createServiceError, mapProfile, throwIfError } from './supabaseUtils.js';
 
-function unwrap(response) {
-  return response.data.data;
+async function getProfileForAuthUser(authUser) {
+  if (!authUser) return null;
+
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+  throwIfError(error, 'Unable to load profile.');
+
+  return mapProfile(data, authUser);
 }
 
 export async function register(payload) {
-  const response = await apiClient.post('/auth/register', payload);
-  return unwrap(response);
+  const { data, error } = await supabase.auth.signUp({
+    email: payload.email,
+    password: payload.password,
+    options: {
+      data: {
+        name: payload.name,
+      },
+    },
+  });
+
+  throwIfError(error, 'Registration failed. Please try again.');
+
+  return {
+    user: data.session ? await getProfileForAuthUser(data.user) : null,
+    needsEmailConfirmation: Boolean(data.user && !data.session),
+  };
 }
 
 export async function login(payload) {
-  const response = await apiClient.post('/auth/login', payload);
-  return unwrap(response);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: payload.email,
+    password: payload.password,
+  });
+
+  throwIfError(error, 'Login failed. Please try again.');
+
+  return { user: await getProfileForAuthUser(data.user) };
 }
 
 export async function logout() {
-  const response = await apiClient.post('/auth/logout');
-  return unwrap(response);
+  const { error } = await supabase.auth.signOut();
+  throwIfError(error, 'Logout failed. Please try again.');
+
+  return { user: null };
 }
 
 export async function getCurrentUser() {
-  const response = await apiClient.get('/auth/me');
-  return unwrap(response);
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  throwIfError(sessionError, 'Unable to refresh user session.');
+
+  if (!sessionData.session) {
+    throw createServiceError({ message: 'Not authenticated', status: 401, code: 'AUTH_REQUIRED' });
+  }
+
+  const { data, error } = await supabase.auth.getUser();
+  throwIfError(error, 'Unable to refresh user session.');
+
+  return { user: await getProfileForAuthUser(data.user) };
 }

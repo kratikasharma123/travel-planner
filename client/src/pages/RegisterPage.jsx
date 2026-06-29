@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import PasswordInput from '../components/PasswordInput.jsx';
 import { useAuth } from '../hooks/useAuth.js';
 
 function RegisterPage() {
@@ -12,6 +13,7 @@ function RegisterPage() {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleChange(event) {
@@ -22,6 +24,7 @@ function RegisterPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
+    setSuccess('');
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
@@ -31,12 +34,19 @@ function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await register({
+      const data = await register({
         name: formData.name,
         email: formData.email,
         password: formData.password,
       });
-      navigate('/dashboard', { replace: true });
+
+      if (data.user) {
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+
+      setSuccess('Account created. Please confirm your email, then login.');
+      setFormData({ name: '', email: '', password: '', confirmPassword: '' });
     } catch (apiError) {
       setError(apiError?.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
@@ -51,6 +61,7 @@ function RegisterPage() {
       <p className="mt-3 text-slate-600">Create an account to save your future AI-powered travel plans.</p>
 
       {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -62,6 +73,7 @@ function RegisterPage() {
             onChange={handleChange}
             required
             minLength={2}
+            autoComplete="name"
             className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
             placeholder="Your name"
           />
@@ -74,33 +86,34 @@ function RegisterPage() {
             value={formData.email}
             onChange={handleChange}
             required
+            autoComplete="email"
             className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
             placeholder="you@example.com"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Password
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             value={formData.password}
             onChange={handleChange}
             required
             minLength={8}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            autoComplete="new-password"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
             placeholder="At least 8 characters"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Confirm password
-          <input
-            type="password"
+          <PasswordInput
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
             required
             minLength={8}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            autoComplete="new-password"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
             placeholder="Repeat password"
           />
         </label>

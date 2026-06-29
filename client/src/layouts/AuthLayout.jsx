@@ -13,7 +13,7 @@ function AuthLayout() {
             Login, save preferences, and continue planning smarter trips.
           </h1>
           <p className="mt-4 text-slate-300">
-            Authentication is powered by HttpOnly JWT cookies, protected routes, and a basic user profile foundation.
+            Authentication is powered by Supabase Auth sessions, protected routes, and a basic user profile foundation.
           </p>
         </div>
       </aside>

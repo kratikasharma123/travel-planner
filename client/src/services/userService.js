@@ -1,20 +1,35 @@
-import apiClient from './apiClient.js';
-
-function unwrap(response) {
-  return response.data.data;
-}
+import { supabase } from './supabaseClient.js';
+import { getCurrentUserId, mapProfile, throwIfError } from './supabaseUtils.js';
 
 export async function getProfile() {
-  const response = await apiClient.get('/users/profile');
-  return unwrap(response);
+  const userId = await getCurrentUserId();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  throwIfError(authError, 'Unable to load profile.');
+
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  throwIfError(error, 'Unable to load profile.');
+
+  return { user: mapProfile(data, authData.user) };
 }
 
 export async function updateProfile(payload) {
-  const response = await apiClient.patch('/users/profile', payload);
-  return unwrap(response);
+  const userId = await getCurrentUserId();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  throwIfError(authError, 'Unable to refresh user session.');
+
+  const updates = {
+    id: userId,
+    name: payload.name ?? authData.user?.user_metadata?.name ?? '',
+    ...(payload.travelPreferences !== undefined ? { travel_preferences: payload.travelPreferences } : {}),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase.from('profiles').upsert(updates, { onConflict: 'id' }).select('*').single();
+  throwIfError(error, 'Profile update failed. Please try again.');
+
+  return { user: mapProfile(data, authData.user) };
 }
 
-export async function updatePreferences(payload) {
-  const response = await apiClient.patch('/users/preferences', payload);
-  return unwrap(response);
+export async function updatePreferences(preferences) {
+  return updateProfile({ travelPreferences: preferences });
 }

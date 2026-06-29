@@ -33,9 +33,10 @@ coverage/
 .DS_Store
 Thumbs.db
 
-# Editor files
+# Editor and local agent files
 .vscode/
 .idea/
+.claude/
 
 # Render/local deployment files
 .render/
