@@ -73,5 +73,23 @@ export function useTrips() {
     [refreshTrips]
   );
 
-  return { trips, pagination, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip };
+  const deleteTrip = useCallback(
+    async (tripId) => {
+      const data = await tripService.deleteTrip(tripId);
+      await refreshTrips();
+      return data.trip;
+    },
+    [refreshTrips]
+  );
+
+  const duplicateTrip = useCallback(
+    async (tripId) => {
+      const data = await tripService.duplicateTrip(tripId);
+      await refreshTrips();
+      return data.trip;
+    },
+    [refreshTrips]
+  );
+
+  return { trips, pagination, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip };
 }

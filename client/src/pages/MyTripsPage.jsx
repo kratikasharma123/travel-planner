@@ -6,6 +6,9 @@ const initialForm = {
   title: '',
   destinationName: '',
   destinationCountry: '',
+  city: '',
+  country: '',
+  budget: '',
   startDate: '',
   endDate: '',
   durationDays: '',
@@ -32,7 +35,10 @@ function tripToForm(trip) {
   return {
     title: trip.title || '',
     destinationName: trip.customDestination?.name || trip.destination?.name || '',
-    destinationCountry: trip.customDestination?.country || trip.destination?.country || '',
+    destinationCountry: trip.customDestination?.country || trip.destination?.country || trip.country || '',
+    city: trip.city || trip.customDestination?.name || '',
+    country: trip.country || trip.customDestination?.country || '',
+    budget: trip.budget || '',
     startDate: trip.startDate || '',
     endDate: trip.endDate || '',
     durationDays: trip.durationDays || '',
@@ -48,9 +54,12 @@ function createTripPayload(formData) {
   return {
     title: formData.title,
     customDestination: {
-      name: formData.destinationName,
-      country: formData.destinationCountry,
+      name: formData.destinationName || formData.city,
+      country: formData.destinationCountry || formData.country,
     },
+    city: formData.city || formData.destinationName,
+    country: formData.country || formData.destinationCountry,
+    budget: Number(formData.budget || 0),
     startDate: formData.startDate || null,
     endDate: formData.endDate || null,
     durationDays: formData.durationDays ? Number(formData.durationDays) : null,
@@ -88,7 +97,7 @@ function getErrorMessage(apiError, fallback) {
 }
 
 function MyTripsPage() {
-  const { trips, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip } = useTrips();
+  const { trips, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip } = useTrips();
   const {
     savedTrips,
     isLoading: savedTripsLoading,
@@ -185,6 +194,30 @@ function MyTripsPage() {
     }
   }
 
+  async function handleDuplicateTrip(tripId) {
+    setFormError('');
+    setSuccess('');
+
+    try {
+      await duplicateTrip(tripId);
+      setSuccess('Trip duplicated successfully.');
+    } catch (apiError) {
+      setFormError(getErrorMessage(apiError, 'Unable to duplicate trip.'));
+    }
+  }
+
+  async function handleDeleteTrip(tripId) {
+    setFormError('');
+    setSuccess('');
+
+    try {
+      await deleteTrip(tripId);
+      setSuccess('Trip deleted successfully.');
+    } catch (apiError) {
+      setFormError(getErrorMessage(apiError, 'Unable to delete trip.'));
+    }
+  }
+
   async function handleSaveTrip(trip) {
     setFormError('');
     setSuccess('');
@@ -278,6 +311,29 @@ function MyTripsPage() {
             onChange={handleChange}
             className="form-control"
             placeholder="Country"
+          />
+          <input
+            name="city"
+            value={formData.city}
+            onChange={handleChange}
+            className="form-control"
+            placeholder="City"
+          />
+          <input
+            name="country"
+            value={formData.country}
+            onChange={handleChange}
+            className="form-control"
+            placeholder="Country preference"
+          />
+          <input
+            type="number"
+            name="budget"
+            min="0"
+            value={formData.budget}
+            onChange={handleChange}
+            className="form-control"
+            placeholder="Trip budget"
           />
           <input
             type="date"
@@ -388,6 +444,8 @@ function MyTripsPage() {
               <option value="">All statuses</option>
               <option value="draft">Draft</option>
               <option value="saved">Saved</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
               <option value="archived">Archived</option>
             </select>
             <div className="flex gap-2">
@@ -422,6 +480,8 @@ function MyTripsPage() {
                 <p>{trip.travelStyle || 'No style set'}</p>
                 <p>{trip.startDate || 'No start date'} {trip.endDate ? `→ ${trip.endDate}` : ''}</p>
                 <p>{trip.durationDays ? `${trip.durationDays} days` : 'Flexible duration'}</p>
+                <p>{trip.city || 'No city set'}</p>
+                <p>{trip.budget ? `Budget: ${trip.budget}` : 'No budget set'}</p>
               </div>
               {trip.interests?.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -448,6 +508,13 @@ function MyTripsPage() {
                 >
                   Save Trip
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDuplicateTrip(trip._id)}
+                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                >
+                  Duplicate
+                </button>
                 {trip.status !== 'archived' && (
                   <button
                     type="button"
@@ -457,6 +524,13 @@ function MyTripsPage() {
                     Archive
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteTrip(trip._id)}
+                  className="btn-danger"
+                >
+                  Delete
+                </button>
               </div>
             </article>
           ))}

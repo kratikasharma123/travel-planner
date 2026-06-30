@@ -113,6 +113,11 @@ export function mapTrip(row) {
     travelStyle: row.travel_style || '',
     interests: row.interests || [],
     notes: row.notes || '',
+    city: row.city || row.custom_destination?.city || '',
+    country: row.country || row.custom_destination?.country || '',
+    budget: Number(row.budget || 0),
+    weatherSummary: row.weather_summary || {},
+    progress: Number(row.progress || 0),
     status: row.status || 'draft',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -133,6 +138,11 @@ export function tripPayloadToRow(payload = {}, userId) {
     ...(payload.travelStyle !== undefined ? { travel_style: payload.travelStyle || '' } : {}),
     ...(payload.interests !== undefined ? { interests: payload.interests || [] } : {}),
     ...(payload.notes !== undefined ? { notes: payload.notes || '' } : {}),
+    ...(payload.city !== undefined ? { city: payload.city || '' } : {}),
+    ...(payload.country !== undefined ? { country: payload.country || '' } : {}),
+    ...(payload.budget !== undefined ? { budget: Number(payload.budget || 0) } : {}),
+    ...(payload.weatherSummary !== undefined ? { weather_summary: payload.weatherSummary || {} } : {}),
+    ...(payload.progress !== undefined ? { progress: Number(payload.progress || 0) } : {}),
     ...(payload.status !== undefined ? { status: payload.status || 'draft' } : {}),
   };
 }
@@ -183,4 +193,71 @@ export function mapSavedTrip(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+export function mapChatSession(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, user: row.user_id, tripId: row.trip_id, title: row.title, context: row.context || {}, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapChatMessage(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, sessionId: row.session_id, user: row.user_id, role: row.role, content: row.content, metadata: row.metadata || {}, createdAt: row.created_at };
+}
+
+export function mapItinerary(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, tripId: row.trip_id, user: row.user_id, title: row.title, source: row.source, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapItineraryItem(row) {
+  if (!row) return null;
+  return {
+    _id: row.id,
+    id: row.id,
+    itineraryId: row.itinerary_id,
+    tripId: row.trip_id,
+    user: row.user_id,
+    dayNumber: row.day_number,
+    timeBlock: row.time_block,
+    title: row.title,
+    description: row.description || '',
+    locationName: row.location_name || '',
+    category: row.category || 'activity',
+    estimatedCost: Number(row.estimated_cost || 0),
+    sortOrder: row.sort_order || 0,
+    metadata: row.metadata || {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapBooking(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, tripId: row.trip_id, user: row.user_id, bookingType: row.booking_type, title: row.title, provider: row.provider || '', referenceNumber: row.reference_number || '', startAt: row.start_at, endAt: row.end_at, details: row.details || {}, documentUrl: row.document_url || '', createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapChecklistItem(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, tripId: row.trip_id, user: row.user_id, category: row.category || 'Travel Essentials', title: row.title, isComplete: Boolean(row.is_complete), sortOrder: row.sort_order || 0, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapTravelDocument(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, tripId: row.trip_id, user: row.user_id, documentType: row.document_type, title: row.title, filePath: row.file_path || '', fileName: row.file_name || '', mimeType: row.mime_type || '', notes: row.notes || '', createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapNotification(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, tripId: row.trip_id, user: row.user_id, notificationType: row.notification_type, title: row.title, message: row.message || '', remindAt: row.remind_at, isRead: Boolean(row.is_read), priority: row.priority || 'medium', createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapSavedLocation(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, tripId: row.trip_id, user: row.user_id, locationType: row.location_type, name: row.name, address: row.address || '', lat: row.lat, lng: row.lng, notes: row.notes || '', metadata: row.metadata || {}, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+export function mapDestinationRecommendation(row) {
+  if (!row) return null;
+  return { _id: row.id, id: row.id, user: row.user_id, tripId: row.trip_id, destinationName: row.destination_name, country: row.country || '', city: row.city || '', imageUrl: row.image_url || '', estimatedBudget: Number(row.estimated_budget || 0), bestTimeToVisit: row.best_time_to_visit || '', rating: Number(row.rating || 0), popularAttractions: row.popular_attractions || [], travelTips: row.travel_tips || [], metadata: row.metadata || {}, createdAt: row.created_at, updatedAt: row.updated_at };
 }

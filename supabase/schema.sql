@@ -347,6 +347,219 @@ on public.saved_trips for delete
 to authenticated
 using (auth.uid() = user_id);
 
+alter table public.trips add column if not exists city text not null default '';
+alter table public.trips add column if not exists country text not null default '';
+alter table public.trips add column if not exists budget numeric not null default 0 check (budget >= 0);
+alter table public.trips add column if not exists weather_summary jsonb not null default '{}'::jsonb;
+alter table public.trips add column if not exists progress numeric not null default 0 check (progress >= 0 and progress <= 100);
+
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conname = 'trips_status_check'
+      and conrelid = 'public.trips'::regclass
+  ) then
+    alter table public.trips drop constraint trips_status_check;
+  end if;
+
+  alter table public.trips
+    add constraint trips_status_check check (status in ('draft', 'saved', 'active', 'completed', 'archived'));
+end;
+$$;
+
+create table if not exists public.ai_chat_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  trip_id uuid references public.trips(id) on delete set null,
+  title text not null default 'Travel chat',
+  context jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.ai_chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.ai_chat_sessions(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('user', 'assistant', 'system')),
+  content text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.trip_itineraries (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null default 'AI Itinerary',
+  source text not null default 'ai' check (source in ('ai', 'manual')),
+  status text not null default 'draft' check (status in ('draft', 'saved', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.itinerary_items (
+  id uuid primary key default gen_random_uuid(),
+  itinerary_id uuid not null references public.trip_itineraries(id) on delete cascade,
+  trip_id uuid not null references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day_number integer not null default 1 check (day_number >= 1),
+  time_block text not null default 'morning' check (time_block in ('morning', 'afternoon', 'evening', 'night')),
+  title text not null,
+  description text not null default '',
+  location_name text not null default '',
+  category text not null default 'activity',
+  estimated_cost numeric not null default 0 check (estimated_cost >= 0),
+  sort_order integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.trip_bookings (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  booking_type text not null default 'activity' check (booking_type in ('flight', 'hotel', 'transport', 'activity')),
+  title text not null,
+  provider text not null default '',
+  reference_number text not null default '',
+  start_at timestamptz,
+  end_at timestamptz,
+  details jsonb not null default '{}'::jsonb,
+  document_url text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.travel_checklists (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  category text not null default 'Travel Essentials',
+  title text not null,
+  is_complete boolean not null default false,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.travel_documents (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  document_type text not null default 'Travel Document',
+  title text not null,
+  file_path text not null default '',
+  file_name text not null default '',
+  mime_type text not null default '',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.trip_notifications (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  notification_type text not null default 'reminder',
+  title text not null,
+  message text not null default '',
+  remind_at timestamptz,
+  is_read boolean not null default false,
+  priority text not null default 'medium' check (priority in ('low', 'medium', 'high')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.saved_locations (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid references public.trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  location_type text not null default 'attraction',
+  name text not null,
+  address text not null default '',
+  lat numeric,
+  lng numeric,
+  notes text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.destination_recommendations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  trip_id uuid references public.trips(id) on delete set null,
+  destination_name text not null,
+  country text not null default '',
+  city text not null default '',
+  image_url text not null default '',
+  estimated_budget numeric not null default 0 check (estimated_budget >= 0),
+  best_time_to_visit text not null default '',
+  rating numeric not null default 4.5 check (rating >= 0 and rating <= 5),
+  popular_attractions text[] not null default '{}',
+  travel_tips text[] not null default '{}',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists trips_user_dates_idx on public.trips(user_id, start_date, end_date);
+create index if not exists ai_chat_sessions_user_idx on public.ai_chat_sessions(user_id, updated_at desc);
+create index if not exists ai_chat_messages_session_idx on public.ai_chat_messages(session_id, created_at);
+create index if not exists trip_itineraries_trip_idx on public.trip_itineraries(trip_id, created_at desc);
+create index if not exists itinerary_items_itinerary_day_idx on public.itinerary_items(itinerary_id, day_number, sort_order);
+create index if not exists trip_bookings_trip_idx on public.trip_bookings(trip_id, start_at);
+create index if not exists travel_checklists_trip_idx on public.travel_checklists(trip_id, sort_order);
+create index if not exists travel_documents_trip_idx on public.travel_documents(trip_id, document_type);
+create index if not exists trip_notifications_user_remind_idx on public.trip_notifications(user_id, remind_at);
+create index if not exists saved_locations_trip_idx on public.saved_locations(trip_id, location_type);
+create index if not exists destination_recommendations_user_idx on public.destination_recommendations(user_id, created_at desc);
+
+create or replace trigger ai_chat_sessions_set_updated_at before update on public.ai_chat_sessions for each row execute function public.set_updated_at();
+create or replace trigger trip_itineraries_set_updated_at before update on public.trip_itineraries for each row execute function public.set_updated_at();
+create or replace trigger itinerary_items_set_updated_at before update on public.itinerary_items for each row execute function public.set_updated_at();
+create or replace trigger trip_bookings_set_updated_at before update on public.trip_bookings for each row execute function public.set_updated_at();
+create or replace trigger travel_checklists_set_updated_at before update on public.travel_checklists for each row execute function public.set_updated_at();
+create or replace trigger travel_documents_set_updated_at before update on public.travel_documents for each row execute function public.set_updated_at();
+create or replace trigger trip_notifications_set_updated_at before update on public.trip_notifications for each row execute function public.set_updated_at();
+create or replace trigger saved_locations_set_updated_at before update on public.saved_locations for each row execute function public.set_updated_at();
+create or replace trigger destination_recommendations_set_updated_at before update on public.destination_recommendations for each row execute function public.set_updated_at();
+
+alter table public.ai_chat_sessions enable row level security;
+alter table public.ai_chat_messages enable row level security;
+alter table public.trip_itineraries enable row level security;
+alter table public.itinerary_items enable row level security;
+alter table public.trip_bookings enable row level security;
+alter table public.travel_checklists enable row level security;
+alter table public.travel_documents enable row level security;
+alter table public.trip_notifications enable row level security;
+alter table public.saved_locations enable row level security;
+alter table public.destination_recommendations enable row level security;
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array['ai_chat_sessions','ai_chat_messages','trip_itineraries','itinerary_items','trip_bookings','travel_checklists','travel_documents','trip_notifications','saved_locations','destination_recommendations'] loop
+    execute format('drop policy if exists "Users can read own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can read own %1$s" on public.%1$I for select to authenticated using (auth.uid() = user_id)', table_name);
+    execute format('drop policy if exists "Users can create own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can create own %1$s" on public.%1$I for insert to authenticated with check (auth.uid() = user_id)', table_name);
+    execute format('drop policy if exists "Users can update own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can update own %1$s" on public.%1$I for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)', table_name);
+    execute format('drop policy if exists "Users can delete own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can delete own %1$s" on public.%1$I for delete to authenticated using (auth.uid() = user_id)', table_name);
+  end loop;
+end;
+$$;
+
+insert into storage.buckets (id, name, public)
+values ('travel-documents', 'travel-documents', false)
+on conflict (id) do nothing;
+
 -- Optional seed rows for local/manual testing. Uncomment and customize if needed.
 -- insert into public.destinations (name, country, region, description, cost_level, tags, popular_attractions)
 -- values

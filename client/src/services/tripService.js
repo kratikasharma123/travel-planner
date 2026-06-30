@@ -9,7 +9,12 @@ const tripSelect = `
 function applyTripFilters(query, params = {}) {
   if (params.status) query.eq('status', params.status);
   if (params.destination) query.eq('destination_id', params.destination);
-  if (params.search) query.ilike('title', `%${params.search}%`);
+  if (params.country) query.ilike('country', `%${params.country}%`);
+  if (params.city) query.ilike('city', `%${params.city}%`);
+  if (params.travelStyle) query.eq('travel_style', params.travelStyle);
+  if (params.startDate) query.gte('start_date', params.startDate);
+  if (params.endDate) query.lte('end_date', params.endDate);
+  if (params.search) query.or(`title.ilike.%${params.search}%,city.ilike.%${params.search}%,country.ilike.%${params.search}%,notes.ilike.%${params.search}%`);
   return query;
 }
 
@@ -71,6 +76,32 @@ export async function updateTrip(tripId, payload) {
   throwIfError(error, 'Unable to update trip.');
 
   return { trip: mapTrip(data) };
+}
+
+export async function deleteTrip(tripId) {
+  const userId = await getCurrentUserId();
+  const { data, error } = await supabase.from('trips').delete().eq('id', tripId).eq('user_id', userId).select(tripSelect).single();
+  throwIfError(error, 'Unable to delete trip.');
+  return { trip: mapTrip(data) };
+}
+
+export async function duplicateTrip(tripId) {
+  const { trip } = await getTrip(tripId);
+  return createTrip({
+    title: `${trip.title} Copy`,
+    customDestination: trip.customDestination,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    durationDays: trip.durationDays,
+    travelerCount: trip.travelerCount,
+    travelStyle: trip.travelStyle,
+    interests: trip.interests,
+    notes: trip.notes,
+    city: trip.city,
+    country: trip.country,
+    budget: trip.budget,
+    status: 'draft',
+  });
 }
 
 export async function archiveTrip(tripId) {
