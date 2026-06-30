@@ -244,39 +244,39 @@ function MyTripsPage() {
   }
 
   return (
-    <section className="grid gap-8">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Trip data layer</p>
-        <h1 className="mt-4 text-3xl font-bold text-slate-950">My Trips</h1>
-        <p className="mt-3 text-slate-600">
+    <section className="page-stack">
+      <div className="app-card">
+        <p className="section-eyebrow">Trip data layer</p>
+        <h1 className="section-title">My Trips</h1>
+        <p className="section-description">
           Create, edit, archive, and save user-owned trips. AI itinerary generation is planned for Milestone 5.
         </p>
 
         {formError && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{formError}</p>}
         {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
-        <form className="mt-6 grid gap-4 lg:grid-cols-3" onSubmit={handleSubmitTrip}>
+        <form className="mt-5 grid gap-4 lg:grid-cols-3" onSubmit={handleSubmitTrip}>
           <input
             name="title"
             value={formData.title}
             onChange={handleChange}
             required
             minLength={2}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Trip title"
           />
           <input
             name="destinationName"
             value={formData.destinationName}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Destination city"
           />
           <input
             name="destinationCountry"
             value={formData.destinationCountry}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Country"
           />
           <input
@@ -284,14 +284,14 @@ function MyTripsPage() {
             name="startDate"
             value={formData.startDate}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
           />
           <input
             type="date"
             name="endDate"
             value={formData.endDate}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
           />
           <input
             type="number"
@@ -300,7 +300,7 @@ function MyTripsPage() {
             max="365"
             value={formData.durationDays}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Duration days"
           />
           <input
@@ -310,20 +310,20 @@ function MyTripsPage() {
             max="50"
             value={formData.travelerCount}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
           />
           <input
             name="travelStyle"
             value={formData.travelStyle}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Travel style"
           />
           <select
             name="status"
             value={formData.status}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
           >
             <option value="draft">Draft</option>
             <option value="saved">Saved</option>
@@ -333,7 +333,7 @@ function MyTripsPage() {
             name="interests"
             value={formData.interests}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 lg:col-span-2"
+            className="form-control lg:col-span-2"
             placeholder="Interests, comma-separated"
           />
           <textarea
@@ -341,14 +341,14 @@ function MyTripsPage() {
             value={formData.notes}
             onChange={handleChange}
             rows="3"
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 lg:col-span-3"
+            className="form-control lg:col-span-3"
             placeholder="Trip notes"
           />
           <div className="flex flex-wrap gap-3 lg:col-span-3">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white hover:bg-primary-600 disabled:opacity-70"
+              className="btn-primary"
             >
               {isSubmitting ? 'Saving...' : editingTripId ? 'Update Trip' : 'Create Trip'}
             </button>
@@ -356,7 +356,7 @@ function MyTripsPage() {
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="rounded-full border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+                className="btn-secondary"
               >
                 Cancel edit
               </button>
@@ -365,7 +365,7 @@ function MyTripsPage() {
         </form>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
+      <div className="app-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-950">Your trip records</h2>
@@ -376,14 +376,14 @@ function MyTripsPage() {
               name="search"
               value={filters.search}
               onChange={handleFilterChange}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+              className="form-control"
               placeholder="Search trips"
             />
             <select
               name="status"
               value={filters.status}
               onChange={handleFilterChange}
-              className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+              className="form-control"
             >
               <option value="">All statuses</option>
               <option value="draft">Draft</option>
@@ -391,10 +391,10 @@ function MyTripsPage() {
               <option value="archived">Archived</option>
             </select>
             <div className="flex gap-2">
-              <button type="submit" className="rounded-full bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600">
+              <button type="submit" className="btn-primary">
                 Filter
               </button>
-              <button type="button" onClick={handleResetFilters} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={handleResetFilters} className="btn-secondary">
                 Reset
               </button>
             </div>
@@ -404,9 +404,9 @@ function MyTripsPage() {
         {isLoading && <p className="mt-4 text-slate-600">Loading trips...</p>}
         {error && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
         {!isLoading && trips.length === 0 && <p className="mt-4 text-slate-600">No trips found. Create your first draft above.</p>}
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {trips.map((trip) => (
-            <article key={trip._id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <article key={trip._id} className="app-card-compact">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-slate-950">{trip.title}</h3>
@@ -444,7 +444,7 @@ function MyTripsPage() {
                 <button
                   type="button"
                   onClick={() => handleSaveTrip(trip)}
-                  className="rounded-full bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600"
+                  className="btn-primary"
                 >
                   Save Trip
                 </button>
@@ -463,17 +463,17 @@ function MyTripsPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
+      <div className="app-card">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Saved trips</p>
-            <h2 className="mt-3 text-2xl font-bold text-slate-950">Saved trip library</h2>
+            <p className="section-eyebrow">Saved trips</p>
+            <h2 className="section-title">Saved trip library</h2>
             <p className="mt-2 text-slate-600">Organize saved trips with folders, notes, and tags.</p>
           </div>
           <button
             type="button"
             onClick={() => refreshSavedTrips()}
-            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="btn-secondary"
           >
             Refresh
           </button>
@@ -483,9 +483,9 @@ function MyTripsPage() {
         {savedTripsError && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{savedTripsError}</p>}
         {!savedTripsLoading && savedTrips.length === 0 && <p className="mt-4 text-slate-600">No saved trips yet. Save a trip from the records above.</p>}
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {savedTrips.map((savedTrip) => (
-            <article key={savedTrip._id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <article key={savedTrip._id} className="app-card-compact">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-slate-950">{savedTrip.savedTitle || savedTrip.trip?.title || 'Saved trip'}</h3>
@@ -505,21 +505,21 @@ function MyTripsPage() {
                     name="savedTitle"
                     value={savedEditForm.savedTitle}
                     onChange={handleSavedEditChange}
-                    className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+                    className="form-control"
                     placeholder="Saved title"
                   />
                   <input
                     name="folder"
                     value={savedEditForm.folder}
                     onChange={handleSavedEditChange}
-                    className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+                    className="form-control"
                     placeholder="Folder"
                   />
                   <input
                     name="tags"
                     value={savedEditForm.tags}
                     onChange={handleSavedEditChange}
-                    className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+                    className="form-control"
                     placeholder="Tags, comma-separated"
                   />
                   <textarea
@@ -527,11 +527,11 @@ function MyTripsPage() {
                     value={savedEditForm.notes}
                     onChange={handleSavedEditChange}
                     rows="3"
-                    className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+                    className="form-control"
                     placeholder="Saved trip notes"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <button type="submit" className="rounded-full bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600">
+                    <button type="submit" className="btn-primary">
                       Save metadata
                     </button>
                     <button type="button" onClick={handleCancelSavedEdit} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">
@@ -562,7 +562,7 @@ function MyTripsPage() {
                     <button
                       type="button"
                       onClick={() => handleRemoveSavedTrip(savedTrip._id)}
-                      className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                      className="btn-danger"
                     >
                       Remove
                     </button>

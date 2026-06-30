@@ -3,7 +3,7 @@ import { Link, Outlet } from 'react-router-dom';
 function AuthLayout() {
   return (
     <div className="grid min-h-screen bg-slate-50 lg:grid-cols-[1fr_1.1fr]">
-      <aside className="hidden bg-slate-950 p-10 text-white lg:flex lg:flex-col lg:justify-between">
+      <aside className="hidden bg-slate-950 p-8 text-white lg:flex lg:flex-col lg:justify-between xl:p-10">
         <Link to="/" className="text-2xl font-bold">
           TravelAI Planner
         </Link>
@@ -17,7 +17,7 @@ function AuthLayout() {
           </p>
         </div>
       </aside>
-      <main className="flex items-center justify-center px-6 py-10">
+      <main className="flex items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
         <div className="w-full max-w-xl">
           <Outlet />
         </div>

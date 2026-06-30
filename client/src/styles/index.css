@@ -18,3 +18,49 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+@layer components {
+  .app-container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .page-stack {
+    @apply grid gap-6 lg:gap-8;
+  }
+
+  .app-card {
+    @apply rounded-3xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6 lg:p-7;
+  }
+
+  .app-card-compact {
+    @apply rounded-2xl border border-slate-200 bg-slate-50 p-4;
+  }
+
+  .section-eyebrow {
+    @apply text-sm font-semibold uppercase tracking-[0.22em] text-primary-600;
+  }
+
+  .section-title {
+    @apply mt-3 text-2xl font-bold text-slate-950 sm:text-3xl;
+  }
+
+  .section-description {
+    @apply mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base;
+  }
+
+  .form-control {
+    @apply rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-4 focus:ring-primary-100 disabled:bg-slate-100;
+  }
+
+  .btn-primary {
+    @apply rounded-full bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70;
+  }
+
+  .btn-secondary {
+    @apply rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70;
+  }
+
+  .btn-danger {
+    @apply rounded-full border border-rose-200 px-5 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70;
+  }
+}

@@ -57,14 +57,14 @@ function ProfilePage() {
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Profile</p>
-      <h1 className="mt-4 text-3xl font-bold text-slate-950">Your travel profile</h1>
-      <p className="mt-3 text-slate-600">
+    <section className="app-card">
+      <p className="section-eyebrow">Profile</p>
+      <h1 className="section-title">Your travel profile</h1>
+      <p className="section-description">
         Manage basic account details and travel preferences for future personalized planning.
       </p>
 
-      <div className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 sm:grid-cols-2">
+      <div className="mt-5 grid gap-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 sm:grid-cols-2">
         <div>
           <span className="font-semibold text-slate-950">Email:</span> {user?.email}
         </div>
@@ -76,7 +76,7 @@ function ProfilePage() {
       {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
       {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
-      <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
+      <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Full name
           <input
@@ -86,7 +86,7 @@ function ProfilePage() {
             onChange={handleChange}
             required
             minLength={2}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -97,7 +97,7 @@ function ProfilePage() {
               name="preferredBudgetRange"
               value={formData.preferredBudgetRange}
               onChange={handleChange}
-              className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+              className="form-control"
               placeholder="Budget / Comfort / Luxury"
             />
           </label>
@@ -108,7 +108,7 @@ function ProfilePage() {
               name="preferredTravelStyle"
               value={formData.preferredTravelStyle}
               onChange={handleChange}
-              className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+              className="form-control"
               placeholder="Adventure / Relaxed / Family"
             />
           </label>
@@ -120,7 +120,7 @@ function ProfilePage() {
             name="interests"
             value={formData.interests}
             onChange={handleChange}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Food, beaches, museums"
           />
           <span className="text-xs text-slate-500">Comma-separated interests.</span>
@@ -129,14 +129,14 @@ function ProfilePage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white transition hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70"
+            className="btn-primary"
           >
             {isSubmitting ? 'Saving...' : 'Save profile'}
           </button>
           <button
             type="button"
             onClick={handleReset}
-            className="rounded-full border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="btn-secondary"
           >
             Reset
           </button>

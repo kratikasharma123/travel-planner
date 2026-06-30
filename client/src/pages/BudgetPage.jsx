@@ -1,259 +1,384 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import AlertBanner from '../features/budget/components/AlertBanner.jsx';
+import AnalyticsSection from '../features/budget/components/AnalyticsSection.jsx';
+import { budgetToForm, emptyExpenseForm, expenseToForm } from '../features/budget/budgetFormUtils.js';
+import BudgetForm from '../features/budget/components/BudgetForm.jsx';
+import BudgetProgressBar from '../features/budget/components/BudgetProgressBar.jsx';
+import CostBreakdown from '../features/budget/components/CostBreakdown.jsx';
+import ExpenseForm from '../features/budget/components/ExpenseForm.jsx';
+import ExpenseTable from '../features/budget/components/ExpenseTable.jsx';
+import FilterPanel from '../features/budget/components/FilterPanel.jsx';
+import RecommendationsSection from '../features/budget/components/RecommendationsSection.jsx';
+import ReportsPanel from '../features/budget/components/ReportsPanel.jsx';
+import SavingsGoalCard from '../features/budget/components/SavingsGoalCard.jsx';
+import StatCard from '../features/budget/components/StatCard.jsx';
+import ToastStack from '../features/budget/components/ToastStack.jsx';
 import { useBudget } from '../hooks/useBudget.js';
+import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { useTrips } from '../hooks/useTrips.js';
+import {
+  currencyFormat,
+  getBudgetSummary,
+  getCostBreakdown,
+  getMonthlySpendingRows,
+  getSavingsProgress,
+  getSavingsTrendRows,
+  getUpcomingRecurringExpenses,
+} from '../utils/budgetCalculations.js';
+import { getBudgetAlerts, getBudgetRecommendations } from '../utils/budgetRecommendations.js';
+import { exportBudgetReport } from '../utils/exportUtils.js';
 
-const categoryFields = [
-  ['accommodation', 'Accommodation'],
-  ['food', 'Food'],
-  ['transport', 'Transport'],
-  ['activities', 'Activities'],
-  ['miscellaneous', 'Miscellaneous'],
-  ['emergencyBuffer', 'Emergency Buffer'],
-];
-
-const emptyBudget = {
-  currency: 'USD',
-  confidenceLevel: 'low',
-  notes: '',
-  categories: {
-    accommodation: 0,
-    food: 0,
-    transport: 0,
-    activities: 0,
-    miscellaneous: 0,
-    emergencyBuffer: 0,
-  },
+const initialFilters = {
+  search: '',
+  category: '',
+  vendor: '',
+  status: '',
+  budgetId: '',
+  startDate: '',
+  endDate: '',
+  month: '',
+  year: '',
+  page: 1,
+  limit: 10,
 };
-
-function budgetToForm(budget) {
-  if (!budget) return emptyBudget;
-
-  return {
-    currency: budget.currency || 'USD',
-    confidenceLevel: budget.confidenceLevel || 'low',
-    notes: budget.notes || '',
-    categories: { ...emptyBudget.categories, ...budget.categories },
-  };
-}
 
 function getErrorMessage(apiError, fallback) {
   return apiError?.response?.data?.message || apiError?.message || fallback;
 }
 
+function validateBudgetForm(formData) {
+  if (!formData.name.trim()) return 'Budget name is required.';
+  if (!formData.tripId) return 'Please select a trip for this budget.';
+  if (!Number(formData.totalBudget)) return 'Total budget must be greater than zero.';
+  if (!formData.currency || formData.currency.length !== 3) return 'Currency must be a 3-letter code.';
+  if (!formData.startDate || !formData.endDate) return 'Start and end dates are required.';
+  if (formData.endDate < formData.startDate) return 'End date must be after start date.';
+  if (!formData.category) return 'Category is required.';
+  return '';
+}
+
+function validateExpenseForm(formData) {
+  if (!formData.title.trim()) return 'Expense title is required.';
+  if (!formData.category) return 'Expense category is required.';
+  if (!Number(formData.amount)) return 'Expense amount must be greater than zero.';
+  if (!formData.expenseDate) return 'Expense date is required.';
+  if (!formData.status) return 'Expense status is required.';
+  if (formData.costType === 'recurring' && !formData.recurrenceFrequency) return 'Recurring expenses need a recurrence frequency.';
+  return '';
+}
+
 function BudgetPage() {
   const { trips, isLoading: tripsLoading } = useTrips();
-  const { budget, isLoading, error, loadBudget, saveBudget, deleteBudget } = useBudget();
-  const [selectedTripId, setSelectedTripId] = useState('');
-  const [formData, setFormData] = useState(emptyBudget);
-  const [success, setSuccess] = useState('');
+  const {
+    budgets,
+    selectedBudget,
+    expenses,
+    pagination,
+    isLoading,
+    isSubmitting,
+    error,
+    refreshBudgets,
+    selectBudget,
+    createBudget,
+    updateBudget,
+    deleteBudget,
+    refreshExpenses,
+    createExpense,
+    updateExpense,
+    deleteExpense,
+  } = useBudget();
+  const [budgetForm, setBudgetForm] = useState(budgetToForm(null));
+  const [expenseForm, setExpenseForm] = useState(emptyExpenseForm);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [filters, setFilters] = useState(initialFilters);
   const [formError, setFormError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [toasts, setToasts] = useState([]);
+  const [reportType, setReportType] = useState('budget');
+  const debouncedSearch = useDebouncedValue(filters.search, 350);
 
-  async function handleTripSelect(event) {
-    const tripId = event.target.value;
-    setSelectedTripId(tripId);
-    setSuccess('');
-    setFormError('');
+  const activeFilters = useMemo(
+    () => ({ ...filters, search: debouncedSearch, budgetId: filters.budgetId || selectedBudget?._id || '' }),
+    [debouncedSearch, filters, selectedBudget]
+  );
 
-    if (!tripId) {
-      setFormData(emptyBudget);
-      return;
-    }
+  useEffect(() => {
+    refreshExpenses(activeFilters);
+  }, [activeFilters, refreshExpenses]);
 
-    const loadedBudget = await loadBudget(tripId);
-    setFormData(budgetToForm(loadedBudget));
+  const summary = useMemo(() => getBudgetSummary(selectedBudget, expenses), [selectedBudget, expenses]);
+  const recommendations = useMemo(() => getBudgetRecommendations(selectedBudget, expenses), [selectedBudget, expenses]);
+  const alerts = useMemo(() => getBudgetAlerts(selectedBudget, expenses), [selectedBudget, expenses]);
+  const costBreakdown = useMemo(() => getCostBreakdown(expenses), [expenses]);
+  const savingsProgress = useMemo(() => getSavingsProgress(selectedBudget, summary), [selectedBudget, summary]);
+  const monthlyRows = useMemo(() => getMonthlySpendingRows(expenses), [expenses]);
+  const savingsRows = useMemo(() => getSavingsTrendRows(selectedBudget, expenses), [selectedBudget, expenses]);
+  const upcomingRecurring = useMemo(() => getUpcomingRecurringExpenses(expenses, selectedBudget?.endDate), [expenses, selectedBudget]);
+  const currency = selectedBudget?.currency || budgetForm.currency || 'USD';
+
+  function addToast(message, tone = 'success') {
+    setToasts((current) => [...current, { id: `${message}-${Date.now()}`, message, tone }].slice(-4));
   }
 
-  function handleChange(event) {
-    const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+  function dismissToast(id) {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
   }
 
-  function handleCategoryChange(event) {
+  function handleBudgetChange(event) {
     const { name, value } = event.target;
-    setFormData((current) => ({
+    setBudgetForm((current) => ({ ...current, [name]: name === 'currency' ? value.toUpperCase() : value }));
+  }
+
+  function handleExpenseChange(event) {
+    const { name, value } = event.target;
+    setExpenseForm((current) => ({
       ...current,
-      categories: { ...current.categories, [name]: Number(value) },
+      [name]: value,
+      ...(name === 'costType' && value !== 'recurring' ? { recurrenceFrequency: '', recurrenceEndDate: '' } : {}),
     }));
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setSuccess('');
-    setFormError('');
+  function handleBudgetSelect(event) {
+    const budgetId = event.target.value;
+    selectBudget(budgetId);
+    const budget = budgets.find((item) => item._id === budgetId) || null;
+    setBudgetForm(budgetToForm(budget));
+    setFilters((current) => ({ ...current, budgetId, page: 1 }));
+  }
 
-    if (!selectedTripId) return;
+  function handleFilterChange(event) {
+    const { name, value } = event.target;
+    setFilters((current) => ({ ...current, [name]: value, page: 1 }));
+    if (name === 'budgetId') {
+      selectBudget(value);
+      const budget = budgets.find((item) => item._id === value) || null;
+      setBudgetForm(budgetToForm(budget));
+    }
+  }
+
+  function handlePageSizeChange(event) {
+    setFilters((current) => ({ ...current, limit: Number(event.target.value), page: 1 }));
+  }
+
+  function resetFilters() {
+    setFilters({ ...initialFilters, budgetId: selectedBudget?._id || '' });
+  }
+
+  async function handleBudgetSubmit(event) {
+    event.preventDefault();
+    setFormError('');
+    setSuccess('');
+
+    const validationError = validateBudgetForm(budgetForm);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    const payload = {
+      ...budgetForm,
+      totalBudget: Number(budgetForm.totalBudget),
+      savingsTarget: Number(budgetForm.savingsTarget || 0),
+      totalEstimate: Number(budgetForm.totalBudget),
+    };
 
     try {
-      const savedBudget = await saveBudget(selectedTripId, formData);
-      setFormData(budgetToForm(savedBudget));
-      setSuccess('Budget saved successfully.');
+      if (selectedBudget) {
+        await updateBudget(selectedBudget._id, payload);
+        setSuccess('Budget updated successfully.');
+        addToast('Budget updated successfully.');
+      } else {
+        await createBudget(payload);
+        setSuccess('Budget created successfully.');
+        addToast('Budget created successfully.');
+      }
+      await refreshBudgets();
     } catch (apiError) {
       setFormError(getErrorMessage(apiError, 'Unable to save budget.'));
     }
   }
 
   async function handleDeleteBudget() {
-    setSuccess('');
+    if (!selectedBudget) return;
     setFormError('');
-
-    if (!budget?._id) {
-      setFormData(emptyBudget);
-      setSuccess('Budget form reset.');
-      return;
-    }
+    setSuccess('');
 
     try {
-      await deleteBudget(budget._id);
-      setFormData(emptyBudget);
+      await deleteBudget(selectedBudget._id);
+      setBudgetForm(budgetToForm(null));
       setSuccess('Budget deleted successfully.');
+      addToast('Budget deleted successfully.');
+      await refreshBudgets();
     } catch (apiError) {
       setFormError(getErrorMessage(apiError, 'Unable to delete budget.'));
     }
   }
 
-  function handleResetForm() {
-    setFormData(budgetToForm(budget));
-    setSuccess('');
+  async function handleExpenseSubmit(event) {
+    event.preventDefault();
     setFormError('');
+    setSuccess('');
+
+    if (!selectedBudget) {
+      setFormError('Create or select a budget before adding expenses.');
+      return;
+    }
+
+    const validationError = validateExpenseForm(expenseForm);
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    const payload = {
+      ...expenseForm,
+      amount: Number(expenseForm.amount),
+      budgetId: selectedBudget._id,
+      tripId: selectedBudget.tripId || selectedBudget.trip,
+    };
+
+    try {
+      if (editingExpense) {
+        await updateExpense(editingExpense._id, payload);
+        setSuccess('Expense updated successfully.');
+        addToast('Expense updated successfully.');
+      } else {
+        const created = await createExpense(payload);
+        setSuccess('Expense added successfully.');
+        addToast(Number(created.amount) >= summary.totalBudget * 0.25 && summary.totalBudget > 0 ? 'Large expense added.' : 'Expense added successfully.', 'success');
+      }
+      setEditingExpense(null);
+      setExpenseForm(emptyExpenseForm);
+      await refreshExpenses(activeFilters);
+    } catch (apiError) {
+      setFormError(getErrorMessage(apiError, 'Unable to save expense.'));
+    }
   }
 
-  const total = Object.values(formData.categories).reduce((sum, value) => sum + Number(value || 0), 0);
-  const selectedTrip = trips.find((trip) => trip._id === selectedTripId);
+  async function handleDeleteExpense(expenseId) {
+    setFormError('');
+    setSuccess('');
+
+    try {
+      await deleteExpense(expenseId);
+      setSuccess('Expense deleted successfully.');
+      addToast('Expense deleted successfully.');
+      await refreshExpenses(activeFilters);
+    } catch (apiError) {
+      setFormError(getErrorMessage(apiError, 'Unable to delete expense.'));
+    }
+  }
+
+  function handleEditExpense(expense) {
+    setEditingExpense(expense);
+    setExpenseForm(expenseToForm(expense));
+  }
+
+  function handleCancelBudgetEdit() {
+    selectBudget('');
+    setBudgetForm(budgetToForm(null));
+  }
+
+  function handleCancelExpenseEdit() {
+    setEditingExpense(null);
+    setExpenseForm(emptyExpenseForm);
+  }
+
+  function handlePageChange(page) {
+    setFilters((current) => ({ ...current, page }));
+  }
+
+  function handleExport(format) {
+    if (!selectedBudget) return;
+    exportBudgetReport(reportType, format, selectedBudget, summary, expenses);
+  }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Manual budget data</p>
-      <h1 className="mt-4 text-3xl font-bold text-slate-950">Budget Planner</h1>
-      <p className="mt-3 text-slate-600">
-        Save manual budget categories for a trip. Automatic estimation is planned for Milestone 6.
-      </p>
-
-      {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
-      {formError && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{formError}</p>}
-      {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
-
-      <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Select trip
-          <select
-            value={selectedTripId}
-            onChange={handleTripSelect}
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
-          >
-            <option value="">Choose a trip</option>
-            {trips.map((trip) => (
-              <option key={trip._id} value={trip._id}>
-                {trip.title}
-              </option>
-            ))}
+    <section className="page-stack">
+      <div className="app-card">
+        <p className="section-eyebrow">Budget planner & cost optimization</p>
+        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="section-title">Budget Planner</h1>
+            <p className="section-description">Plan trip budgets, track estimated and actual expenses, optimize costs, analyze trends, and export reports.</p>
+          </div>
+          <select value={selectedBudget?._id || ''} onChange={handleBudgetSelect} className="form-control">
+            <option value="">New budget</option>
+            {budgets.map((budget) => <option key={budget._id} value={budget._id}>{budget.name}</option>)}
           </select>
-        </label>
+        </div>
+        {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+        {formError && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{formError}</p>}
+        {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
+      </div>
 
-        {!tripsLoading && trips.length === 0 && <p className="text-sm text-slate-600">Create a trip first from My Trips.</p>}
-        {selectedTrip && (
-          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-            <span className="font-semibold text-slate-950">Selected:</span> {selectedTrip.title}{' '}
-            {selectedTrip.customDestination?.name ? `• ${selectedTrip.customDestination.name}` : ''}
+      <AlertBanner alerts={alerts} />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <StatCard label="Total Budget" value={currencyFormat(summary.totalBudget, currency)} icon="💼" tone="blue" />
+        <StatCard label="Estimated Cost" value={currencyFormat(summary.totalEstimatedCost, currency)} icon="🧾" />
+        <StatCard label="Actual Cost" value={currencyFormat(summary.totalActualCost, currency)} icon="✅" tone="green" />
+        <StatCard label="Remaining" value={currencyFormat(summary.remainingBudget, currency)} icon="💵" tone={summary.remainingBudget < 0 ? 'red' : 'green'} />
+        <StatCard label="Utilization" value={`${summary.utilization.toFixed(1)}%`} icon="📍" tone={summary.status === 'over' ? 'red' : summary.status === 'near' ? 'yellow' : 'green'} />
+        <StatCard label="Savings" value={currencyFormat(summary.savingsAmount, currency)} icon="🏦" tone="green" />
+      </div>
+
+      <BudgetProgressBar utilization={summary.utilization} />
+
+      <div className="grid gap-6 lg:gap-8 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="app-card">
+          <p className="section-eyebrow">Budget setup</p>
+          <h2 className="section-title">Create or edit budget</h2>
+          {!tripsLoading && trips.length === 0 && <p className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm text-amber-700">Create a trip first from My Trips before creating a budget.</p>}
+          <div className="mt-6">
+            <BudgetForm formData={budgetForm} trips={trips} selectedBudget={selectedBudget} onChange={handleBudgetChange} onSubmit={handleBudgetSubmit} onCancel={handleCancelBudgetEdit} onDelete={handleDeleteBudget} isSubmitting={isSubmitting} />
+          </div>
+        </section>
+
+        <section className="app-card">
+          <p className="section-eyebrow">Expense management</p>
+          <h2 className="section-title">Add estimated or actual costs</h2>
+          <div className="mt-6">
+            <ExpenseForm formData={expenseForm} selectedBudget={selectedBudget} editingExpense={editingExpense} onChange={handleExpenseChange} onSubmit={handleExpenseSubmit} onCancel={handleCancelExpenseEdit} isSubmitting={isSubmitting} />
+          </div>
+        </section>
+      </div>
+
+      <RecommendationsSection recommendations={recommendations} />
+
+      <section className="grid gap-5">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-950">Expenses</h2>
+          <p className="mt-2 text-sm text-slate-600">Search, filter, paginate, edit, and delete budget expenses.</p>
+        </div>
+        <FilterPanel filters={filters} budgets={budgets} onChange={handleFilterChange} onReset={resetFilters} onPageSizeChange={handlePageSizeChange} />
+        <ExpenseTable expenses={expenses} currency={currency} pagination={pagination} onEdit={handleEditExpense} onDelete={handleDeleteExpense} onPageChange={handlePageChange} isLoading={isLoading} />
+      </section>
+
+      <CostBreakdown rows={costBreakdown} currency={currency} />
+      <SavingsGoalCard budget={selectedBudget} progress={savingsProgress} expenses={expenses} />
+
+      <section className="app-card">
+        <p className="section-eyebrow">Recurring expenses</p>
+        <h2 className="section-title">Upcoming recurring costs</h2>
+        {upcomingRecurring.length === 0 ? (
+          <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-slate-600">No upcoming recurring expenses calculated.</p>
+        ) : (
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {upcomingRecurring.slice(0, 6).map((expense) => (
+              <article key={`${expense._id}-${expense.occurrenceDate}`} className="rounded-2xl bg-slate-50 p-4">
+                <p className="font-bold text-slate-950">{expense.title}</p>
+                <p className="mt-1 text-sm text-slate-600">{expense.occurrenceDate} • {expense.recurrenceFrequency}</p>
+                <p className="mt-2 font-semibold text-slate-950">{currencyFormat(expense.amount, currency)}</p>
+              </article>
+            ))}
           </div>
         )}
+      </section>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {categoryFields.map(([key, label]) => (
-            <label key={key} className="grid gap-2 text-sm font-medium text-slate-700">
-              {label}
-              <input
-                type="number"
-                min="0"
-                name={key}
-                value={formData.categories[key]}
-                onChange={handleCategoryChange}
-                className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
-              />
-            </label>
-          ))}
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Currency
-            <input
-              name="currency"
-              value={formData.currency}
-              onChange={handleChange}
-              maxLength={3}
-              className="rounded-2xl border border-slate-200 px-4 py-3 uppercase outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
-            Confidence
-            <select
-              name="confidenceLevel"
-              value={formData.confidenceLevel}
-              onChange={handleChange}
-              className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </label>
-        </div>
-
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Notes
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            rows="3"
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
-            placeholder="Manual assumptions for this budget"
-          />
-        </label>
-
-        <div className="grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total</p>
-            <p className="mt-1 text-2xl font-bold text-slate-950">
-              {formData.currency.toUpperCase()} {total}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Confidence</p>
-            <p className="mt-1 font-semibold capitalize text-slate-800">{formData.confidenceLevel}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Saved record</p>
-            <p className="mt-1 font-semibold text-slate-800">{budget ? 'Available' : 'Not saved yet'}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="submit"
-            disabled={!selectedTripId || isLoading}
-            className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isLoading ? 'Saving...' : 'Save Budget'}
-          </button>
-          <button
-            type="button"
-            onClick={handleResetForm}
-            disabled={isLoading}
-            className="rounded-full border border-slate-300 px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
-          >
-            Reset form
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteBudget}
-            disabled={!selectedTripId || isLoading}
-            className="rounded-full border border-rose-200 px-6 py-3 font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-70"
-          >
-            {budget ? 'Delete Budget' : 'Clear form'}
-          </button>
-        </div>
-      </form>
+      <AnalyticsSection summary={summary} expenses={expenses} monthlyRows={monthlyRows} savingsRows={savingsRows} />
+      <ReportsPanel reportType={reportType} onReportTypeChange={(event) => setReportType(event.target.value)} onExport={handleExport} disabled={!selectedBudget} />
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </section>
   );
 }

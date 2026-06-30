@@ -55,15 +55,15 @@ function RegisterPage() {
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Start planning</p>
-      <h1 className="mt-4 text-3xl font-bold text-slate-950">Create your TravelAI account</h1>
-      <p className="mt-3 text-slate-600">Create an account to save your future AI-powered travel plans.</p>
+    <section className="app-card">
+      <p className="section-eyebrow">Start planning</p>
+      <h1 className="section-title">Create your TravelAI account</h1>
+      <p className="section-description">Create an account to save your future AI-powered travel plans.</p>
 
       {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
       {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
-      <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
+      <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           Full name
           <input
@@ -74,7 +74,7 @@ function RegisterPage() {
             required
             minLength={2}
             autoComplete="name"
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="Your name"
           />
         </label>
@@ -87,7 +87,7 @@ function RegisterPage() {
             onChange={handleChange}
             required
             autoComplete="email"
-            className="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="form-control"
             placeholder="you@example.com"
           />
         </label>
@@ -100,7 +100,7 @@ function RegisterPage() {
             required
             minLength={8}
             autoComplete="new-password"
-            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="w-full form-control"
             placeholder="At least 8 characters"
           />
         </label>
@@ -113,14 +113,14 @@ function RegisterPage() {
             required
             minLength={8}
             autoComplete="new-password"
-            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+            className="w-full form-control"
             placeholder="Repeat password"
           />
         </label>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-full bg-primary-500 px-6 py-3 font-semibold text-white transition hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-70"
+          className="btn-primary"
         >
           {isSubmitting ? 'Creating account...' : 'Create account'}
         </button>

@@ -74,6 +74,37 @@ create table if not exists public.budgets (
   unique (user_id, trip_id)
 );
 
+alter table public.budgets add column if not exists name text not null default 'Trip Budget';
+alter table public.budgets add column if not exists category text not null default 'general';
+alter table public.budgets add column if not exists description text not null default '';
+alter table public.budgets add column if not exists total_budget numeric not null default 0 check (total_budget >= 0);
+alter table public.budgets add column if not exists start_date date;
+alter table public.budgets add column if not exists end_date date;
+alter table public.budgets add column if not exists savings_target numeric not null default 0 check (savings_target >= 0);
+alter table public.budgets add column if not exists fixed_costs numeric not null default 0 check (fixed_costs >= 0);
+alter table public.budgets add column if not exists variable_costs numeric not null default 0 check (variable_costs >= 0);
+alter table public.budgets add column if not exists one_time_costs numeric not null default 0 check (one_time_costs >= 0);
+alter table public.budgets add column if not exists recurring_costs numeric not null default 0 check (recurring_costs >= 0);
+
+create table if not exists public.budget_expenses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  budget_id uuid not null references public.budgets(id) on delete cascade,
+  trip_id uuid references public.trips(id) on delete cascade,
+  title text not null,
+  category text not null default 'miscellaneous',
+  amount numeric not null default 0 check (amount >= 0),
+  expense_date date not null default current_date,
+  vendor text not null default '',
+  notes text not null default '',
+  status text not null default 'estimated' check (status in ('estimated', 'actual')),
+  cost_type text not null default 'variable' check (cost_type in ('fixed', 'variable', 'one-time', 'recurring')),
+  recurrence_frequency text not null default '' check (recurrence_frequency in ('', 'daily', 'weekly', 'monthly', 'quarterly', 'yearly')),
+  recurrence_end_date date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.saved_trips (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -116,6 +147,13 @@ create index if not exists trips_user_created_idx on public.trips(user_id, creat
 create index if not exists trips_user_status_idx on public.trips(user_id, status);
 create index if not exists trips_user_destination_idx on public.trips(user_id, destination_id);
 create index if not exists budgets_trip_idx on public.budgets(trip_id);
+create index if not exists budgets_user_dates_idx on public.budgets(user_id, start_date, end_date);
+create index if not exists budgets_user_category_idx on public.budgets(user_id, category);
+create index if not exists budget_expenses_budget_date_idx on public.budget_expenses(budget_id, expense_date desc);
+create index if not exists budget_expenses_user_category_idx on public.budget_expenses(user_id, category);
+create index if not exists budget_expenses_user_vendor_idx on public.budget_expenses(user_id, vendor);
+create index if not exists budget_expenses_user_status_idx on public.budget_expenses(user_id, status);
+create index if not exists budget_expenses_user_cost_type_idx on public.budget_expenses(user_id, cost_type);
 create index if not exists saved_trips_user_saved_at_idx on public.saved_trips(user_id, saved_at desc);
 create index if not exists saved_trips_user_folder_idx on public.saved_trips(user_id, folder);
 create index if not exists saved_trips_tags_idx on public.saved_trips using gin(tags);
@@ -134,6 +172,10 @@ for each row execute function public.set_updated_at();
 
 create or replace trigger budgets_set_updated_at
 before update on public.budgets
+for each row execute function public.set_updated_at();
+
+create or replace trigger budget_expenses_set_updated_at
+before update on public.budget_expenses
 for each row execute function public.set_updated_at();
 
 create or replace trigger saved_trips_set_updated_at
@@ -162,6 +204,7 @@ alter table public.profiles enable row level security;
 alter table public.destinations enable row level security;
 alter table public.trips enable row level security;
 alter table public.budgets enable row level security;
+alter table public.budget_expenses enable row level security;
 alter table public.saved_trips enable row level security;
 
 drop policy if exists "Users can read own profile" on public.profiles;
@@ -242,6 +285,37 @@ with check (
 drop policy if exists "Users can delete own budgets" on public.budgets;
 create policy "Users can delete own budgets"
 on public.budgets for delete
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can read own budget expenses" on public.budget_expenses;
+create policy "Users can read own budget expenses"
+on public.budget_expenses for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can create own budget expenses" on public.budget_expenses;
+create policy "Users can create own budget expenses"
+on public.budget_expenses for insert
+to authenticated
+with check (
+  auth.uid() = user_id
+  and exists (select 1 from public.budgets where budgets.id = budget_expenses.budget_id and budgets.user_id = auth.uid())
+);
+
+drop policy if exists "Users can update own budget expenses" on public.budget_expenses;
+create policy "Users can update own budget expenses"
+on public.budget_expenses for update
+to authenticated
+using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and exists (select 1 from public.budgets where budgets.id = budget_expenses.budget_id and budgets.user_id = auth.uid())
+);
+
+drop policy if exists "Users can delete own budget expenses" on public.budget_expenses;
+create policy "Users can delete own budget expenses"
+on public.budget_expenses for delete
 to authenticated
 using (auth.uid() = user_id);
 

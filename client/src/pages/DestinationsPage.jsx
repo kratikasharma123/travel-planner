@@ -30,40 +30,40 @@ function DestinationsPage() {
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary-600">Destination data</p>
-      <h1 className="mt-4 text-3xl font-bold text-slate-950">Destination Discovery</h1>
-      <p className="mt-3 text-slate-600">
+    <section className="app-card">
+      <p className="section-eyebrow">Destination data</p>
+      <h1 className="section-title">Destination Discovery</h1>
+      <p className="section-description">
         Browse seeded destination records, filter by travel interests, and use them as inspiration for your next trip.
       </p>
 
-      <form className="mt-6 grid gap-3 lg:grid-cols-6" onSubmit={handleApplyFilters}>
+      <form className="mt-5 grid gap-3 lg:grid-cols-6" onSubmit={handleApplyFilters}>
         <input
           name="search"
           value={filters.search}
           onChange={handleFilterChange}
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 lg:col-span-2"
+          className="form-control lg:col-span-2"
           placeholder="Search destination"
         />
         <input
           name="country"
           value={filters.country}
           onChange={handleFilterChange}
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+          className="form-control"
           placeholder="Country"
         />
         <input
           name="region"
           value={filters.region}
           onChange={handleFilterChange}
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+          className="form-control"
           placeholder="Region"
         />
         <select
           name="costLevel"
           value={filters.costLevel}
           onChange={handleFilterChange}
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+          className="form-control"
         >
           <option value="">Any budget</option>
           <option value="budget">Budget</option>
@@ -74,28 +74,28 @@ function DestinationsPage() {
           name="tag"
           value={filters.tag}
           onChange={handleFilterChange}
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100"
+          className="form-control"
           placeholder="Tag"
         />
         <div className="flex gap-2 lg:col-span-6">
-          <button type="submit" className="rounded-full bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-600">
+          <button type="submit" className="btn-primary">
             Apply filters
           </button>
-          <button type="button" onClick={handleResetFilters} className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <button type="button" onClick={handleResetFilters} className="btn-secondary">
             Reset
           </button>
         </div>
       </form>
 
-      {isLoading && <p className="mt-6 text-slate-600">Loading destinations...</p>}
-      {error && <p className="mt-6 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {isLoading && <p className="mt-5 text-slate-600">Loading destinations...</p>}
+      {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
       {!isLoading && destinations.length === 0 && (
-        <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-slate-600">
+        <div className="mt-5 rounded-2xl bg-slate-50 p-6 text-slate-600">
           No destinations found. Try changing filters or run the Supabase seed file.
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
         {destinations.map((destination) => (
           <article key={destination._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
             {destination.imageUrl && (
@@ -149,7 +149,7 @@ function DestinationsPage() {
               )}
               <Link
                 to="/my-trips"
-                className="mt-5 inline-flex rounded-full bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600"
+                className="mt-5 inline-flex btn-primary"
               >
                 Plan a trip
               </Link>
