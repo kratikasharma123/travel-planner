@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
         }, 0);
       } else {
         setUser(null);
+        setIsLoading(false);
       }
     });
 
@@ -75,6 +76,17 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const requestPasswordReset = useCallback(
+    async (email) => authService.requestPasswordReset(email),
+    []
+  );
+
+  const resetPassword = useCallback(async (password) => {
+    const data = await authService.resetPassword(password);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const updateProfile = useCallback(async (payload) => {
     const data = await userService.updateProfile(payload);
     setUser(data.user);
@@ -95,11 +107,24 @@ export function AuthProvider({ children }) {
       register,
       login,
       logout,
+      requestPasswordReset,
+      resetPassword,
       refreshCurrentUser,
       updateProfile,
       updatePreferences,
     }),
-    [user, isLoading, register, login, logout, refreshCurrentUser, updateProfile, updatePreferences]
+    [
+      user,
+      isLoading,
+      register,
+      login,
+      logout,
+      requestPasswordReset,
+      resetPassword,
+      refreshCurrentUser,
+      updateProfile,
+      updatePreferences,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
