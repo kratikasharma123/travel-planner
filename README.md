@@ -11,15 +11,15 @@ Travel planning normally multiple tabs, websites, notes, budget calculations, au
 
 ## Tech Stack
 
-| Layer          | Technology                                          |
-| -------------- | --------------------------------------------------- |
-| Frontend       | React, Vite, Tailwind CSS, React Router             |
-| Backend/BaaS   | Supabase                                            |
-| Database       | Supabase Postgres                                   |
-| Authentication | Supabase Auth                                       |
-| Authorization  | Supabase Row Level Security                         |
-| AI             | OpenAI API planned for later milestone              |
-| Deployment     | Static frontend hosting planned for later milestone |
+| Layer | Technology |
+|---|---|
+| Frontend | React, Vite, Tailwind CSS, React Router |
+| Backend/BaaS | Supabase |
+| Database | Supabase Postgres |
+| Authentication | Supabase Auth |
+| Authorization | Supabase Row Level Security |
+| AI | OpenAI API planned for later milestone |
+| Deployment | Static frontend hosting planned for later milestone |
 
 ## Current Features
 
@@ -96,13 +96,13 @@ http://localhost:5173
 
 ## Supabase Data Model
 
-| Table          | Purpose                                                                          |
-| -------------- | -------------------------------------------------------------------------------- |
-| `profiles`     | User profile, role, status, and travel preferences linked to Supabase Auth users |
-| `destinations` | Destination discovery records                                                    |
-| `trips`        | User-created travel plans                                                        |
-| `budgets`      | Trip-level manual budget categories and totals                                   |
-| `saved_trips`  | User saved/organized trip references                                             |
+| Table | Purpose |
+|---|---|
+| `profiles` | User profile, role, status, and travel preferences linked to Supabase Auth users |
+| `destinations` | Destination discovery records |
+| `trips` | User-created travel plans |
+| `budgets` | Trip-level manual budget categories and totals |
+| `saved_trips` | User saved/organized trip references |
 
 RLS policies in `supabase/schema.sql` make profiles, trips, budgets, and saved trips user-owned. Authenticated users can read active destinations.
 
@@ -135,34 +135,24 @@ npm run dev
 npm run dev:client
 npm run build
 npm run lint
-npm run test
-npm run test:e2e
-npm run audit
 npm run format
 npm run format:check
 ```
 
-## Admin, Testing, and Deployment Readiness
-
-- Admin setup and manual Super Admin bootstrap: [docs/ADMIN.md](docs/ADMIN.md)
-- Testing commands and QA checklist: [docs/TESTING.md](docs/TESTING.md)
-- Deployment readiness without live deployment: [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
-- Backup and recovery procedures: [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md)
-
 ## Roadmap
 
-| Milestone    | Focus                                                   | Status                 |
-| ------------ | ------------------------------------------------------- | ---------------------- |
-| Milestone 1  | Discovery, planning, UI/UX, architecture, documentation | Complete               |
-| Milestone 2  | Project initialization and app shell                    | Complete               |
-| Milestone 3  | Authentication and user profiles                        | Complete with Supabase |
-| Milestone 4  | Trip data layer                                         | Complete with Supabase |
-| Milestone 5  | AI itinerary generation                                 | Planned                |
-| Milestone 6  | Budget planner and recommendations                      | Planned                |
-| Milestone 7  | Dashboard and saved trips experience                    | Planned                |
-| Milestone 8  | AI assistant and destination discovery                  | Planned                |
-| Milestone 9  | Admin dashboard and SaaS controls                       | Planned                |
-| Milestone 10 | Testing, security, and deployment                       | Planned                |
+| Milestone | Focus | Status |
+|---|---|---|
+| Milestone 1 | Discovery, planning, UI/UX, architecture, documentation | Complete |
+| Milestone 2 | Project initialization and app shell | Complete |
+| Milestone 3 | Authentication and user profiles | Complete with Supabase |
+| Milestone 4 | Trip data layer | Complete with Supabase |
+| Milestone 5 | AI itinerary generation | Planned |
+| Milestone 6 | Budget planner and recommendations | Planned |
+| Milestone 7 | Dashboard and saved trips experience | Planned |
+| Milestone 8 | AI assistant and destination discovery | Planned |
+| Milestone 9 | Admin dashboard and SaaS controls | Planned |
+| Milestone 10 | Testing, security, and deployment | Planned |
 
 ## Out of Scope for Current Version
 

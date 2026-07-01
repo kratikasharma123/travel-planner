@@ -1,9 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { canChooseAdminDashboard } from '../features/admin/adminConstants.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 function PublicOnlyRoute() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -16,7 +15,7 @@ function PublicOnlyRoute() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={canChooseAdminDashboard(user) ? '/choose-dashboard' : '/dashboard'} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

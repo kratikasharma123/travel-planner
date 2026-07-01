@@ -19,34 +19,6 @@ a {
   text-decoration: none;
 }
 
-@keyframes soft-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes soft-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-soft-float,
-  .animate-soft-fade-up {
-    animation: none !important;
-  }
-}
-
 @layer components {
   .app-container {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
@@ -90,17 +62,5 @@ a {
 
   .btn-danger {
     @apply rounded-full border border-rose-200 px-5 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70;
-  }
-
-  .animate-soft-float {
-    animation: soft-float 5s ease-in-out infinite;
-  }
-
-  .animate-soft-fade-up {
-    animation: soft-fade-up 0.75s ease-out both;
-  }
-
-  .landing-hover-card {
-    @apply transition duration-300 hover:-translate-y-2 hover:shadow-2xl;
   }
 }

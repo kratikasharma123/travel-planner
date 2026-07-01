@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PasswordInput from '../components/PasswordInput.jsx';
-import { canChooseAdminDashboard } from '../features/admin/adminConstants.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 function LoginPage() {
@@ -25,14 +24,8 @@ function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const loggedInUser = await login(formData);
-      console.log('Logged in user:', loggedInUser);
-      console.log('Login role:', loggedInUser?.role);
-      console.log('Login status:', loggedInUser?.status);
-      console.log('Should show admin choice:', canChooseAdminDashboard(loggedInUser));
-
-      const nextRoute = canChooseAdminDashboard(loggedInUser) ? '/choose-dashboard' : redirectTo;
-      navigate(nextRoute || '/dashboard', { replace: true });
+      await login(formData);
+      navigate(redirectTo, { replace: true });
     } catch (apiError) {
       setError(apiError?.response?.data?.message || 'Login failed. Please try again.');
     } finally {
@@ -44,9 +37,7 @@ function LoginPage() {
     <section className="app-card">
       <p className="section-eyebrow">Welcome back</p>
       <h1 className="section-title">Login to TravelAI Planner</h1>
-      <p className="section-description">
-        Access your dashboard and continue planning smarter trips.
-      </p>
+      <p className="section-description">Access your dashboard and continue planning smarter trips.</p>
 
       {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
 
@@ -65,15 +56,7 @@ function LoginPage() {
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-700">
-          <span className="flex items-center justify-between gap-3">
-            Password
-            <Link
-              to="/forgot-password"
-              className="text-xs font-semibold text-primary-600 hover:text-primary-700"
-            >
-              Forgot password?
-            </Link>
-          </span>
+          Password
           <PasswordInput
             name="password"
             value={formData.password}
@@ -84,7 +67,11 @@ function LoginPage() {
             placeholder="Enter your password"
           />
         </label>
-        <button type="submit" disabled={isSubmitting} className="btn-primary">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="btn-primary"
+        >
           {isSubmitting ? 'Logging in...' : 'Login'}
         </button>
       </form>
