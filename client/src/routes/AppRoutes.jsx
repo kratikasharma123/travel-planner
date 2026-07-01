@@ -6,8 +6,10 @@ import PublicLayout from '../layouts/PublicLayout.jsx';
 import AdminPage from '../pages/AdminPage.jsx';
 import AssistantPage from '../pages/AssistantPage.jsx';
 import BudgetPage from '../pages/BudgetPage.jsx';
+import ChooseDashboardPage from '../pages/ChooseDashboardPage.jsx';
 import DashboardPage from '../pages/DashboardPage.jsx';
 import DestinationsPage from '../pages/DestinationsPage.jsx';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import MyTripsPage from '../pages/MyTripsPage.jsx';
@@ -15,6 +17,7 @@ import NotFoundPage from '../pages/NotFoundPage.jsx';
 import PlannerPage from '../pages/PlannerPage.jsx';
 import ProfilePage from '../pages/ProfilePage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
+import ResetPasswordPage from '../pages/ResetPasswordPage.jsx';
 import AdminRoute from './AdminRoute.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import PublicOnlyRoute from './PublicOnlyRoute.jsx';
@@ -30,11 +33,17 @@ function AppRoutes() {
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         </Route>
+      </Route>
+
+      <Route element={<AuthLayout />}>
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
+          <Route path="/choose-dashboard" element={<ChooseDashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/planner" element={<PlannerPage />} />
           <Route path="/destinations" element={<DestinationsPage />} />

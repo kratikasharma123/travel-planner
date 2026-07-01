@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { canAccessAdmin } from '../features/admin/adminConstants.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 function AdminRoute() {
@@ -19,7 +20,7 @@ function AdminRoute() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (user?.role !== 'admin') {
+  if (!canAccessAdmin(user)) {
     return <Navigate to="/dashboard" replace />;
   }
 

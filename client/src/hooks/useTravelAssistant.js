@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { sendTravelMessage } from '../services/aiTravelService.js';
+import { logAiUsage } from '../services/adminService.js';
 import * as tripManagementService from '../services/tripManagementService.js';
 
 function getErrorMessage(apiError, fallback) {
@@ -78,16 +79,42 @@ export function useTravelAssistant() {
       if (!text.trim()) return null;
       setIsSending(true);
       setError('');
+      const startedAt = performance.now();
       try {
         const session = activeSession || (await startSession({ trip, title: text.slice(0, 42) }));
-        const userData = await tripManagementService.createChatMessage({ sessionId: session._id, role: 'user', content: text });
+        const userData = await tripManagementService.createChatMessage({
+          sessionId: session._id,
+          role: 'user',
+          content: text,
+        });
         setMessages((current) => [...current, userData.message]);
         const assistant = await sendTravelMessage({ message: text, trip, history: messages });
-        const assistantData = await tripManagementService.createChatMessage({ sessionId: session._id, ...assistant });
+        const assistantData = await tripManagementService.createChatMessage({
+          sessionId: session._id,
+          ...assistant,
+        });
+        await logAiUsage({
+          tripId: trip?._id || trip?.id,
+          sessionId: session._id,
+          requestType: 'chat',
+          prompt: text,
+          responseSummary: assistant.content.slice(0, 240),
+          tokenEstimate: Math.ceil((text.length + assistant.content.length) / 4),
+          latencyMs: Math.round(performance.now() - startedAt),
+          status: 'success',
+        });
         setMessages((current) => [...current, assistantData.message]);
         await refreshSessions();
         return assistantData.message;
       } catch (apiError) {
+        await logAiUsage({
+          tripId: trip?._id || trip?.id,
+          requestType: 'chat',
+          prompt: text,
+          status: 'failed',
+          error: getErrorMessage(apiError, 'Unable to send message.'),
+          latencyMs: Math.round(performance.now() - startedAt),
+        });
         setError(getErrorMessage(apiError, 'Unable to send message.'));
         return null;
       } finally {
@@ -97,5 +124,17 @@ export function useTravelAssistant() {
     [activeSession, messages, refreshSessions, startSession]
   );
 
-  return { sessions, activeSession, messages, isLoading, isSending, error, setActiveSession, refreshSessions, loadMessages, startSession, sendMessage };
+  return {
+    sessions,
+    activeSession,
+    messages,
+    isLoading,
+    isSending,
+    error,
+    setActiveSession,
+    refreshSessions,
+    loadMessages,
+    startSession,
+    sendMessage,
+  };
 }

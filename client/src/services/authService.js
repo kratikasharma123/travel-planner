@@ -4,7 +4,11 @@ import { createServiceError, mapProfile, throwIfError } from './supabaseUtils.js
 async function getProfileForAuthUser(authUser) {
   if (!authUser) return null;
 
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', authUser.id).maybeSingle();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUser.id)
+    .maybeSingle();
   throwIfError(error, 'Unable to load profile.');
 
   return mapProfile(data, authUser);
@@ -45,6 +49,19 @@ export async function logout() {
   throwIfError(error, 'Logout failed. Please try again.');
 
   return { user: null };
+}
+
+export async function requestPasswordReset(email) {
+  const redirectTo = `${window.location.origin}/reset-password`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  throwIfError(error, 'Unable to send password reset email.');
+  return { success: true };
+}
+
+export async function resetPassword(password) {
+  const { data, error } = await supabase.auth.updateUser({ password });
+  throwIfError(error, 'Unable to update password.');
+  return { user: await getProfileForAuthUser(data.user) };
 }
 
 export async function getCurrentUser() {
