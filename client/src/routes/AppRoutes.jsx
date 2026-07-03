@@ -4,17 +4,27 @@ import AuthLayout from '../layouts/AuthLayout.jsx';
 import DashboardLayout from '../layouts/DashboardLayout.jsx';
 import PublicLayout from '../layouts/PublicLayout.jsx';
 import AdminPage from '../pages/AdminPage.jsx';
-import AssistantPage from '../pages/AssistantPage.jsx';
+import BudgetDetailsPage from '../pages/BudgetDetailsPage.jsx';
+import BookingsPage from '../pages/BookingsPage.jsx';
 import BudgetPage from '../pages/BudgetPage.jsx';
+import ChooseDashboardPage from '../pages/ChooseDashboardPage.jsx';
 import DashboardPage from '../pages/DashboardPage.jsx';
+import DestinationDetailsPage from '../pages/DestinationDetailsPage.jsx';
 import DestinationsPage from '../pages/DestinationsPage.jsx';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import MyTripsPage from '../pages/MyTripsPage.jsx';
+import TripDetailsPage from '../pages/TripDetailsPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 import PlannerPage from '../pages/PlannerPage.jsx';
 import ProfilePage from '../pages/ProfilePage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
+import ResetPasswordPage from '../pages/ResetPasswordPage.jsx';
+import SavedPlacesPage from '../pages/SavedPlacesPage.jsx';
+import AdminRoute from './AdminRoute.jsx';
+import ProtectedRoute from './ProtectedRoute.jsx';
+import PublicOnlyRoute from './PublicOnlyRoute.jsx';
 
 function AppRoutes() {
   return (
@@ -23,23 +33,39 @@ function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
       </Route>
 
+      <Route element={<PublicOnlyRoute />}>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        </Route>
+      </Route>
+
       <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
-      <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/planner" element={<PlannerPage />} />
-        <Route path="/destinations" element={<DestinationsPage />} />
-        <Route path="/budget" element={<BudgetPage />} />
-        <Route path="/my-trips" element={<MyTripsPage />} />
-        <Route path="/assistant" element={<AssistantPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/choose-dashboard" element={<ChooseDashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/planner" element={<PlannerPage />} />
+          <Route path="/destinations" element={<DestinationsPage />} />
+          <Route path="/destinations/:destinationId" element={<DestinationDetailsPage />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/budget/:budgetId" element={<BudgetDetailsPage />} />
+          <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/saved-places" element={<SavedPlacesPage />} />
+          <Route path="/my-trips" element={<MyTripsPage />} />
+          <Route path="/my-trips/:tripId" element={<TripDetailsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
       </Route>
 
-      <Route element={<AdminLayout />}>
-        <Route path="/admin" element={<AdminPage />} />
+      <Route element={<AdminRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminPage />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
