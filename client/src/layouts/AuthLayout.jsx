@@ -1,13 +1,16 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import ScrollReveal from '../components/ScrollReveal.jsx';
 
 function AuthLayout() {
-  return (
-    <ScrollReveal autoReveal className="relative grid min-h-screen overflow-hidden bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_48%,#e0f2fe_100%)] text-slate-900 lg:grid-cols-[1fr_1.05fr]" selector="aside, main, section, form, article" stagger={0.08}>
-      <div className="pointer-events-none absolute -left-24 top-10 h-80 w-80 rounded-full bg-orange-200/50 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-10 h-96 w-96 rounded-full bg-cyan-200/40 blur-3xl" />
+  const location = useLocation();
+  const isRegisterPage = location.pathname === '/register';
 
-      <aside className="relative hidden p-8 lg:flex lg:flex-col lg:justify-between xl:p-10">
+  return (
+    <ScrollReveal autoReveal className={`relative min-h-screen overflow-hidden bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_48%,#fef3c7_100%)] text-slate-900 ${isRegisterPage ? '' : 'grid lg:grid-cols-[1fr_1.05fr]'}`} selector="aside, main, section, form, article" stagger={0.08}>
+      <div className="pointer-events-none absolute -left-24 top-10 h-80 w-80 rounded-full bg-orange-200/50 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-10 h-96 w-96 rounded-full bg-teal-200/35 blur-3xl" />
+
+      {!isRegisterPage && <aside className="relative hidden p-8 lg:flex lg:flex-col lg:justify-between xl:p-10">
         <Link to="/" className="flex items-center gap-3 text-2xl font-black text-slate-950">
           <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-200">
             ✈
@@ -43,10 +46,10 @@ function AuthLayout() {
             </p>
           </div>
         </div>
-      </aside>
+      </aside>}
 
-      <main className="relative flex items-center justify-center px-4 py-8 sm:px-6 lg:py-10">
-        <div className="w-full max-w-xl">
+      <main className={`relative flex items-center justify-center px-4 py-8 sm:px-6 lg:py-10 ${isRegisterPage ? 'min-h-screen' : ''}`}>
+        <div className={`w-full ${isRegisterPage ? 'max-w-7xl' : 'max-w-xl'}`}>
           <Outlet />
         </div>
       </main>

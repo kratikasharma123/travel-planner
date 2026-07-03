@@ -64,7 +64,7 @@ function AppRoutes() {
 
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/*" element={<AdminPage />} />
         </Route>
       </Route>
 
