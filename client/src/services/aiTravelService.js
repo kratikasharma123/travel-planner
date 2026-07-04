@@ -1,9 +1,41 @@
+import { supabase } from './supabaseClient.js';
+
 const timeBlocks = ['morning', 'afternoon', 'evening', 'night'];
 
 const destinationSeeds = [
-  { destinationName: 'Bali', country: 'Indonesia', city: 'Ubud', estimatedBudget: 1200, bestTimeToVisit: 'April to October', rating: 4.8, popularAttractions: ['Ubud Rice Terraces', 'Uluwatu Temple', 'Seminyak Beach'], travelTips: ['Book scooters carefully', 'Carry light rainwear', 'Respect temple dress codes'] },
-  { destinationName: 'Kyoto', country: 'Japan', city: 'Kyoto', estimatedBudget: 1800, bestTimeToVisit: 'March to May, October to November', rating: 4.9, popularAttractions: ['Fushimi Inari', 'Arashiyama Bamboo Grove', 'Kiyomizu-dera'], travelTips: ['Use public transport passes', 'Reserve popular restaurants', 'Start sightseeing early'] },
-  { destinationName: 'Goa', country: 'India', city: 'Panaji', estimatedBudget: 650, bestTimeToVisit: 'November to February', rating: 4.6, popularAttractions: ['Baga Beach', 'Old Goa', 'Fort Aguada'], travelTips: ['Compare cab fares', 'Keep beach days flexible', 'Try local seafood'] },
+  {
+    destinationName: 'Bali',
+    country: 'Indonesia',
+    city: 'Ubud',
+    estimatedBudget: 1200,
+    bestTimeToVisit: 'April to October',
+    rating: 4.8,
+    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=900&q=90',
+    popularAttractions: ['Ubud Rice Terraces', 'Uluwatu Temple', 'Seminyak Beach'],
+    travelTips: ['Book scooters carefully', 'Carry light rainwear', 'Respect temple dress codes'],
+  },
+  {
+    destinationName: 'Kyoto',
+    country: 'Japan',
+    city: 'Kyoto',
+    estimatedBudget: 1800,
+    bestTimeToVisit: 'March to May, October to November',
+    rating: 4.9,
+    imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=90',
+    popularAttractions: ['Fushimi Inari', 'Arashiyama Bamboo Grove', 'Kiyomizu-dera'],
+    travelTips: ['Use public transport passes', 'Reserve popular restaurants', 'Start sightseeing early'],
+  },
+  {
+    destinationName: 'Goa',
+    country: 'India',
+    city: 'Panaji',
+    estimatedBudget: 650,
+    bestTimeToVisit: 'November to February',
+    rating: 4.6,
+    imageUrl: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=900&q=90',
+    popularAttractions: ['Baga Beach', 'Old Goa', 'Fort Aguada'],
+    travelTips: ['Compare cab fares', 'Keep beach days flexible', 'Try local seafood'],
+  },
 ];
 
 function tripName(trip) {
@@ -31,30 +63,44 @@ export async function sendTravelMessage({ message, trip, history = [] }) {
   };
 }
 
-export function generateItinerary({ trip, days = 3, interests = [] }) {
-  const city = trip?.city || trip?.customDestination?.name || 'Destination';
-  const preferred = interests.length ? interests : trip?.interests || ['culture', 'food', 'sightseeing'];
-  const items = [];
+function normalizeGeneratedItem(item = {}, index = 0) {
+  return {
+    dayNumber: Number(item.dayNumber || 1),
+    timeBlock: timeBlocks.includes(item.timeBlock) ? item.timeBlock : timeBlocks[index % timeBlocks.length],
+    title: item.title || 'AI travel stop',
+    description: item.description || '',
+    locationName: item.locationName || '',
+    category: item.category || 'activity',
+    estimatedCost: Number(item.estimatedCost || 0),
+    sortOrder: Number(item.sortOrder ?? index % timeBlocks.length),
+    metadata: item.metadata || { generatedBy: 'claude-opus-4-8' },
+  };
+}
 
-  for (let day = 1; day <= Math.max(Number(days || 3), 1); day += 1) {
-    timeBlocks.forEach((block, index) => {
-      const theme = preferred[(day + index) % preferred.length] || 'travel';
-      const meal = block === 'morning' ? 'breakfast cafe' : block === 'afternoon' ? 'local lunch spot' : block === 'evening' ? 'dinner recommendation' : 'optional night walk';
-      items.push({
-        dayNumber: day,
-        timeBlock: block,
-        title: `${city} ${block} ${theme}`,
-        description: `Explore a ${theme}-focused ${block} plan with a ${meal}.`,
-        locationName: `${city} central area`,
-        category: block === 'night' ? 'optional' : 'activity',
-        estimatedCost: 25 + day * 8 + index * 10,
-        sortOrder: index,
-        metadata: { meal, generatedBy: 'mock-ready-ai' },
-      });
-    });
-  }
+export async function generateItinerary({ trip, days = 3, interests = [], draft = {}, weather = null }) {
+  const { data, error } = await supabase.functions.invoke('generate-ai-trip', {
+    body: {
+      trip,
+      draft,
+      weather,
+      days,
+      preferences: { interests },
+    },
+  });
 
-  return { title: `${tripName(trip)} AI Itinerary`, items };
+  if (error) throw error;
+  if (!data?.items?.length) throw new Error('AI did not return itinerary items.');
+
+  return {
+    title: data.title || `${tripName(trip)} AI Itinerary`,
+    summary: data.summary || '',
+    estimatedBudget: data.estimatedBudget || '',
+    tips: data.tips || [],
+    packingChecklist: data.packingChecklist || [],
+    budgetNotes: data.budgetNotes || [],
+    usage: data.usage || null,
+    items: data.items.map(normalizeGeneratedItem),
+  };
 }
 
 export function generateDestinationRecommendations(filters = {}) {

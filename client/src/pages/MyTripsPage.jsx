@@ -1,6 +1,21 @@
 import { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  CalendarDays,
+  Compass,
+  Edit3,
+  Heart,
+  MapPin,
+  Plane,
+  Plus,
+  Sparkles,
+  Trash2,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { useSavedTrips } from '../hooks/useSavedTrips.js';
 import { useTrips } from '../hooks/useTrips.js';
+import { currencyFormat } from '../utils/budgetCalculations.js';
 
 const initialForm = {
   title: '',
@@ -20,7 +35,6 @@ const initialForm = {
 };
 
 const initialFilters = {
-  search: '',
   status: '',
 };
 
@@ -30,6 +44,15 @@ const initialSavedEditForm = {
   tags: '',
   notes: '',
 };
+
+const tripTabs = ['All', 'Upcoming', 'Planned', 'Completed'];
+
+const tripImages = [
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=900&q=90',
+];
 
 function tripToForm(trip) {
   return {
@@ -96,27 +119,75 @@ function getErrorMessage(apiError, fallback) {
   return message;
 }
 
+function getInitialForm(destination) {
+  if (!destination) return initialForm;
+
+  const destinationName = destination.name || destination.city || '';
+  const destinationCountry = destination.country || '';
+
+  return {
+    ...initialForm,
+    title: `${destinationName || 'New'} trip`,
+    destinationName,
+    destinationCountry,
+    city: destinationName,
+    country: destinationCountry,
+    notes: destination.tag ? `Inspired by ${destination.tag}.` : '',
+  };
+}
+
+function getDestinationName(trip) {
+  return trip.destination?.name || trip.customDestination?.name || trip.city || 'Custom destination';
+}
+
+function getWishlistCount() {
+  return JSON.parse(window.localStorage.getItem('tripsafar-favorite-destinations') || '[]').length;
+}
+
+function getTripProgress(trip) {
+  if (trip.status === 'completed') return 100;
+  if (trip.status === 'active') return 72;
+  if (trip.status === 'saved') return 58;
+  return 34;
+}
+
 function MyTripsPage() {
-  const { trips, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip } = useTrips();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const selectedDestination = location.state?.destination;
+  const { trips, isLoading, error, refreshTrips, createTrip, updateTrip, deleteTrip } = useTrips();
   const {
     savedTrips,
     isLoading: savedTripsLoading,
     error: savedTripsError,
     refreshSavedTrips,
-    saveTrip,
     updateSavedTrip,
     removeSavedTrip,
   } = useSavedTrips();
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState(() => getInitialForm(selectedDestination));
   const [filters, setFilters] = useState(initialFilters);
+  const [activeTab, setActiveTab] = useState('All');
   const [editingTripId, setEditingTripId] = useState(null);
   const [editingSavedTripId, setEditingSavedTripId] = useState(null);
   const [savedEditForm, setSavedEditForm] = useState(initialSavedEditForm);
   const [formError, setFormError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState(() => {
+    const destinationName = selectedDestination?.name || selectedDestination?.city;
+    return destinationName ? `Ready to create your ${destinationName} trip.` : '';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeTrips = useMemo(() => trips.filter((trip) => trip.status !== 'archived'), [trips]);
+  const upcomingTrips = useMemo(() => activeTrips.filter((trip) => trip.status !== 'completed'), [activeTrips]);
+  const completedTrips = useMemo(() => trips.filter((trip) => trip.status === 'completed'), [trips]);
+  const filteredTrips = useMemo(() => {
+    if (activeTab === 'Upcoming') return upcomingTrips;
+    if (activeTab === 'Planned') return trips.filter((trip) => ['draft', 'saved', 'active'].includes(trip.status));
+    if (activeTab === 'Completed') return completedTrips;
+    return trips;
+  }, [activeTab, completedTrips, trips, upcomingTrips]);
+  const featuredTrip = upcomingTrips[0] || activeTrips[0] || null;
+  const savedDestinationCount = savedTrips.length + getWishlistCount();
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -182,30 +253,6 @@ function MyTripsPage() {
     }
   }
 
-  async function handleArchiveTrip(tripId) {
-    setFormError('');
-    setSuccess('');
-
-    try {
-      await archiveTrip(tripId);
-      setSuccess('Trip archived successfully.');
-    } catch (apiError) {
-      setFormError(getErrorMessage(apiError, 'Unable to archive trip.'));
-    }
-  }
-
-  async function handleDuplicateTrip(tripId) {
-    setFormError('');
-    setSuccess('');
-
-    try {
-      await duplicateTrip(tripId);
-      setSuccess('Trip duplicated successfully.');
-    } catch (apiError) {
-      setFormError(getErrorMessage(apiError, 'Unable to duplicate trip.'));
-    }
-  }
-
   async function handleDeleteTrip(tripId) {
     setFormError('');
     setSuccess('');
@@ -215,18 +262,6 @@ function MyTripsPage() {
       setSuccess('Trip deleted successfully.');
     } catch (apiError) {
       setFormError(getErrorMessage(apiError, 'Unable to delete trip.'));
-    }
-  }
-
-  async function handleSaveTrip(trip) {
-    setFormError('');
-    setSuccess('');
-
-    try {
-      await saveTrip({ tripId: trip._id, savedTitle: trip.title });
-      setSuccess('Trip saved successfully.');
-    } catch (apiError) {
-      setFormError(getErrorMessage(apiError, 'Unable to save trip.'));
     }
   }
 
@@ -277,378 +312,214 @@ function MyTripsPage() {
   }
 
   return (
-    <section className="page-stack">
-      <div className="app-card">
-        <p className="section-eyebrow">Trip data layer</p>
-        <h1 className="section-title">My Trips</h1>
-        <p className="section-description">
-          Create, edit, archive, and save user-owned trips. AI itinerary generation is planned for Milestone 5.
-        </p>
+    <section className="relative grid gap-6 overflow-hidden">
+      <div className="pointer-events-none absolute -left-24 top-12 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-96 h-80 w-80 rounded-full bg-emerald-100/70 blur-3xl" />
 
-        {formError && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{formError}</p>}
-        {success && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/80 p-6 shadow-2xl shadow-orange-100 sm:p-8 lg:p-10">
+        <img
+          src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1800&q=90"
+          alt="Airplane trips background"
+          className="absolute inset-0 h-full w-full scale-105 object-cover blur-[1.5px]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-orange-950/45 to-orange-400/20" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(251,146,60,0.35),transparent_30%),radial-gradient(circle_at_86%_76%,rgba(16,185,129,0.24),transparent_28%)]" />
+      
+        <div className="relative max-w-4xl">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-orange-100 shadow-sm backdrop-blur">
+            <Sparkles className="h-4 w-4" />
+            Trip cockpit
+          </p>
+          <h1 className="mt-5 text-4xl font-black tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">Your travel plans</h1>
+          <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-white/85 sm:text-lg">Manage saved trips, itineraries, budgets, and AI recommendations.</p>
+          <button type="button" onClick={() => navigate('/planner')} className="mt-7 inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-orange-600">
+            <Plus className="h-4 w-4" />
+            Plan New Trip
+          </button>
+        </div>
+      </section>
 
+      {(formError || success || error) && (
+        <div className="grid gap-3">
+          {formError && <p className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">{formError}</p>}
+          {success && <p className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{success}</p>}
+          {error && <p className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</p>}
+        </div>
+      )}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Total Trips', value: trips.length, icon: Plane },
+          { label: 'Upcoming Trips', value: upcomingTrips.length, icon: CalendarDays },
+          { label: 'Completed Trips', value: completedTrips.length, icon: CheckCircleIcon },
+          { label: 'Saved Destinations', value: savedDestinationCount, icon: Heart },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <article key={item.label} className="rounded-[1.5rem] border border-orange-100 bg-white p-5 shadow-lg shadow-orange-100/40 transition hover:-translate-y-1 hover:shadow-xl">
+              <Icon className="h-6 w-6 text-orange-500" />
+              <p className="mt-4 text-xs font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+              <p className="mt-1 text-3xl font-black text-slate-950">{item.value}</p>
+            </article>
+          );
+        })}
+      </section>
+
+      {featuredTrip && (
+        <section className="group relative min-h-96 overflow-hidden rounded-[2rem] shadow-2xl shadow-orange-100">
+          <img src={tripImages[0]} alt={featuredTrip.title} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-200">Featured upcoming trip</p>
+            <h2 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">{featuredTrip.title}</h2>
+            <p className="mt-2 text-lg font-semibold text-white/80">{getDestinationName(featuredTrip)} • {featuredTrip.startDate || 'Flexible dates'}</p>
+            <div className="mt-5 max-w-xl">
+              <div className="flex justify-between text-xs font-black uppercase tracking-[0.16em] text-white/60"><span>Planning progress</span><span>{getTripProgress(featuredTrip)}%</span></div>
+              <div className="mt-2 h-3 overflow-hidden rounded-full bg-white/20"><div className="h-full rounded-full bg-orange-500" style={{ width: `${getTripProgress(featuredTrip)}%` }} /></div>
+            </div>
+            <Link to="/planner" state={{ trip: featuredTrip }} className="mt-6 inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-white transition hover:bg-orange-600">
+              Continue Planning
+              <Plane className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Plan new trip</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">Create or edit a trip</h2>
         <form className="mt-5 grid gap-4 lg:grid-cols-3" onSubmit={handleSubmitTrip}>
-          <input
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            minLength={2}
-            className="form-control"
-            placeholder="Trip title"
-          />
-          <input
-            name="destinationName"
-            value={formData.destinationName}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="Destination city"
-          />
-          <input
-            name="destinationCountry"
-            value={formData.destinationCountry}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="Country"
-          />
-          <input
-            name="city"
-            value={formData.city}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="City"
-          />
-          <input
-            name="country"
-            value={formData.country}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="Country preference"
-          />
-          <input
-            type="number"
-            name="budget"
-            min="0"
-            value={formData.budget}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="Trip budget"
-          />
-          <input
-            type="date"
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
-            className="form-control"
-          />
-          <input
-            type="date"
-            name="endDate"
-            value={formData.endDate}
-            onChange={handleChange}
-            className="form-control"
-          />
-          <input
-            type="number"
-            name="durationDays"
-            min="1"
-            max="365"
-            value={formData.durationDays}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="Duration days"
-          />
-          <input
-            type="number"
-            name="travelerCount"
-            min="1"
-            max="50"
-            value={formData.travelerCount}
-            onChange={handleChange}
-            className="form-control"
-          />
-          <input
-            name="travelStyle"
-            value={formData.travelStyle}
-            onChange={handleChange}
-            className="form-control"
-            placeholder="Travel style"
-          />
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="form-control"
-          >
-            <option value="draft">Draft</option>
-            <option value="saved">Saved</option>
-            <option value="archived">Archived</option>
-          </select>
-          <input
-            name="interests"
-            value={formData.interests}
-            onChange={handleChange}
-            className="form-control lg:col-span-2"
-            placeholder="Interests, comma-separated"
-          />
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            rows="3"
-            className="form-control lg:col-span-3"
-            placeholder="Trip notes"
-          />
+          <input name="title" value={formData.title} onChange={handleChange} required minLength={2} className="form-control" placeholder="Trip title" />
+          <input name="destinationName" value={formData.destinationName} onChange={handleChange} className="form-control" placeholder="Destination city" />
+          <input name="destinationCountry" value={formData.destinationCountry} onChange={handleChange} className="form-control" placeholder="Country" />
+          <input name="city" value={formData.city} onChange={handleChange} className="form-control" placeholder="City" />
+          <input name="country" value={formData.country} onChange={handleChange} className="form-control" placeholder="Country preference" />
+          <input type="number" name="budget" min="0" value={formData.budget} onChange={handleChange} className="form-control" placeholder="Trip budget" />
+          <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="form-control" />
+          <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} className="form-control" />
+          <input type="number" name="durationDays" min="1" max="365" value={formData.durationDays} onChange={handleChange} className="form-control" placeholder="Duration days" />
+          <input type="number" name="travelerCount" min="1" max="50" value={formData.travelerCount} onChange={handleChange} className="form-control" />
+          <input name="travelStyle" value={formData.travelStyle} onChange={handleChange} className="form-control" placeholder="Travel style" />
+          <select name="status" value={formData.status} onChange={handleChange} className="form-control"><option value="draft">Draft</option><option value="saved">Saved</option><option value="archived">Archived</option></select>
+          <input name="interests" value={formData.interests} onChange={handleChange} className="form-control lg:col-span-2" placeholder="Interests, comma-separated" />
+          <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className="form-control lg:col-span-3" placeholder="Trip notes" />
           <div className="flex flex-wrap gap-3 lg:col-span-3">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary"
-            >
-              {isSubmitting ? 'Saving...' : editingTripId ? 'Update Trip' : 'Create Trip'}
-            </button>
-            {editingTripId && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="btn-secondary"
-              >
-                Cancel edit
-              </button>
-            )}
+            <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : editingTripId ? 'Update Trip' : 'Create Trip'}</button>
+            {editingTripId && <button type="button" onClick={handleCancelEdit} className="btn-secondary">Cancel edit</button>}
           </div>
         </form>
-      </div>
+      </section>
 
-      <div className="app-card">
+      <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-950">Your trip records</h2>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Trip records</p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">Your trip cards</h2>
             <p className="mt-2 text-sm text-slate-600">{activeTrips.length} active trips • {trips.length} total records</p>
           </div>
-          <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" onSubmit={handleApplyFilters}>
-            <input
-              name="search"
-              value={filters.search}
-              onChange={handleFilterChange}
-              className="form-control"
-              placeholder="Search trips"
-            />
-            <select
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-              className="form-control"
-            >
-              <option value="">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="saved">Saved</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="archived">Archived</option>
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="btn-primary">
-                Filter
-              </button>
-              <button type="button" onClick={handleResetFilters} className="btn-secondary">
-                Reset
-              </button>
-            </div>
+          <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleApplyFilters}>
+            <select name="status" value={filters.status} onChange={handleFilterChange} className="form-control"><option value="">All statuses</option><option value="draft">Draft</option><option value="saved">Saved</option><option value="active">Active</option><option value="completed">Completed</option><option value="archived">Archived</option></select>
+            <div className="flex gap-2"><button type="submit" className="btn-primary">Filter</button><button type="button" onClick={handleResetFilters} className="btn-secondary">Reset</button></div>
           </form>
         </div>
 
-        {isLoading && <p className="mt-4 text-slate-600">Loading trips...</p>}
-        {error && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
-        {!isLoading && trips.length === 0 && <p className="mt-4 text-slate-600">No trips found. Create your first draft above.</p>}
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {trips.map((trip) => (
-            <article key={trip._id} className="app-card-compact">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-bold text-slate-950">{trip.title}</h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {trip.destination?.name || trip.customDestination?.name || 'Custom destination'}
-                    {trip.customDestination?.country ? `, ${trip.customDestination.country}` : ''}
-                  </p>
-                </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">{trip.status}</span>
-              </div>
-              <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                <p>Travelers: {trip.travelerCount}</p>
-                <p>{trip.travelStyle || 'No style set'}</p>
-                <p>{trip.startDate || 'No start date'} {trip.endDate ? `→ ${trip.endDate}` : ''}</p>
-                <p>{trip.durationDays ? `${trip.durationDays} days` : 'Flexible duration'}</p>
-                <p>{trip.city || 'No city set'}</p>
-                <p>{trip.budget ? `Budget: ${trip.budget}` : 'No budget set'}</p>
-              </div>
-              {trip.interests?.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {trip.interests.map((interest) => (
-                    <span key={interest} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {trip.notes && <p className="mt-4 text-sm leading-6 text-slate-600">{trip.notes}</p>}
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleEditTrip(trip)}
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSaveTrip(trip)}
-                  className="btn-primary"
-                >
-                  Save Trip
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDuplicateTrip(trip._id)}
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                >
-                  Duplicate
-                </button>
-                {trip.status !== 'archived' && (
-                  <button
-                    type="button"
-                    onClick={() => handleArchiveTrip(trip._id)}
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                  >
-                    Archive
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteTrip(trip._id)}
-                  className="btn-danger"
-                >
-                  Delete
-                </button>
-              </div>
-            </article>
-          ))}
+        <div className="mt-5 flex flex-wrap gap-2">
+          {tripTabs.map((tab) => <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`rounded-full px-4 py-2 text-sm font-black transition ${activeTab === tab ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}`}>{tab}</button>)}
         </div>
-      </div>
 
-      <div className="app-card">
+        {isLoading && <p className="mt-4 text-slate-600">Loading trips...</p>}
+        {!isLoading && filteredTrips.length === 0 && (
+          <div className="mt-6 rounded-[1.75rem] border border-dashed border-orange-200 bg-orange-50 p-8 text-center">
+            <Compass className="mx-auto h-12 w-12 text-orange-500" />
+            <h3 className="mt-4 text-xl font-black text-slate-950">No trips planned yet</h3>
+            <button type="button" onClick={() => navigate('/planner')} className="mt-4 rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-white">Create your first trip</button>
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {filteredTrips.map((trip, index) => (
+              <article key={trip._id} className="group overflow-hidden rounded-[2rem] border border-orange-100 bg-white shadow-lg shadow-orange-100/40 transition hover:-translate-y-2 hover:shadow-2xl hover:shadow-orange-100/70">
+                <div className="relative h-52 overflow-hidden">
+                  <img src={tripImages[index % tripImages.length]} alt={trip.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-slate-950/10" />
+                  <span className="absolute bottom-4 left-4 rounded-full bg-orange-500 px-3 py-1 text-xs font-black uppercase text-white">{trip.status}</span>
+                </div>
+                <div className="p-5">
+                  <h3 className="text-xl font-black text-slate-950">{trip.title}</h3>
+                  <p className="mt-1 flex items-center gap-1 text-sm font-semibold text-slate-500"><MapPin className="h-4 w-4 text-orange-500" />{getDestinationName(trip)}</p>
+                  <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                    <p><CalendarDays className="mr-1 inline h-4 w-4 text-orange-500" />{trip.startDate || 'Flexible'} {trip.endDate ? `→ ${trip.endDate}` : ''}</p>
+                    <p><Users className="mr-1 inline h-4 w-4 text-orange-500" />{trip.travelerCount} travelers</p>
+                    <p><Wallet className="mr-1 inline h-4 w-4 text-orange-500" />{currencyFormat(trip.budget || 0)}</p>
+                    <p><Sparkles className="mr-1 inline h-4 w-4 text-orange-500" />{trip.travelStyle || 'AI-ready'}</p>
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex justify-between text-xs font-black uppercase tracking-[0.16em] text-slate-400"><span>Progress</span><span>{getTripProgress(trip)}%</span></div>
+                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-orange-50"><div className="h-full rounded-full bg-orange-500" style={{ width: `${getTripProgress(trip)}%` }} /></div>
+                  </div>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Link to={`/my-trips/${trip._id}`} state={{ trip }} className="rounded-full border border-orange-100 px-4 py-2 text-sm font-black text-orange-600 hover:bg-orange-50"><Edit3 className="mr-1 inline h-4 w-4" />View Details</Link>
+                    <Link to="/planner" state={{ trip }} className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-white">Continue Planning</Link>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-orange-50 pt-4">
+                    <button type="button" onClick={() => handleEditTrip(trip)} className="text-xs font-black text-slate-500 hover:text-orange-600"><Edit3 className="mr-1 inline h-3.5 w-3.5" />Edit Trip</button>
+                    <button type="button" onClick={() => handleDeleteTrip(trip._id)} className="text-xs font-black text-rose-600"><Trash2 className="mr-1 inline h-3.5 w-3.5" />Delete</button>
+                  </div>
+                </div>
+              </article>
+            ))}
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="section-eyebrow">Saved trips</p>
-            <h2 className="section-title">Saved trip library</h2>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Saved trips</p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">Saved trip library</h2>
             <p className="mt-2 text-slate-600">Organize saved trips with folders, notes, and tags.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => refreshSavedTrips()}
-            className="btn-secondary"
-          >
-            Refresh
-          </button>
+          <button type="button" onClick={() => refreshSavedTrips()} className="btn-secondary">Refresh</button>
         </div>
 
         {savedTripsLoading && <p className="mt-4 text-slate-600">Loading saved trips...</p>}
         {savedTripsError && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{savedTripsError}</p>}
-        {!savedTripsLoading && savedTrips.length === 0 && <p className="mt-4 text-slate-600">No saved trips yet. Save a trip from the records above.</p>}
+        {!savedTripsLoading && savedTrips.length === 0 && <p className="mt-4 rounded-2xl bg-orange-50 p-4 text-slate-600">No saved trips yet. Save a trip from the records above.</p>}
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {savedTrips.map((savedTrip) => (
-            <article key={savedTrip._id} className="app-card-compact">
+            <article key={savedTrip._id} className="rounded-[1.5rem] border border-orange-100 bg-orange-50/60 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="font-bold text-slate-950">{savedTrip.savedTitle || savedTrip.trip?.title || 'Saved trip'}</h3>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {savedTrip.trip?.customDestination?.name || savedTrip.trip?.destination?.name || 'Destination not set'}
-                    {savedTrip.folder ? ` • ${savedTrip.folder}` : ''}
-                  </p>
+                  <h3 className="font-black text-slate-950">{savedTrip.savedTitle || savedTrip.trip?.title || 'Saved trip'}</h3>
+                  <p className="mt-1 text-sm text-slate-600">{savedTrip.trip?.customDestination?.name || savedTrip.trip?.destination?.name || 'Destination not set'}{savedTrip.folder ? ` • ${savedTrip.folder}` : ''}</p>
                 </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                  {savedTrip.savedAt ? new Date(savedTrip.savedAt).toLocaleDateString() : 'Saved'}
-                </span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">{savedTrip.savedAt ? new Date(savedTrip.savedAt).toLocaleDateString() : 'Saved'}</span>
               </div>
 
               {editingSavedTripId === savedTrip._id ? (
                 <form className="mt-4 grid gap-3" onSubmit={handleUpdateSavedTrip}>
-                  <input
-                    name="savedTitle"
-                    value={savedEditForm.savedTitle}
-                    onChange={handleSavedEditChange}
-                    className="form-control"
-                    placeholder="Saved title"
-                  />
-                  <input
-                    name="folder"
-                    value={savedEditForm.folder}
-                    onChange={handleSavedEditChange}
-                    className="form-control"
-                    placeholder="Folder"
-                  />
-                  <input
-                    name="tags"
-                    value={savedEditForm.tags}
-                    onChange={handleSavedEditChange}
-                    className="form-control"
-                    placeholder="Tags, comma-separated"
-                  />
-                  <textarea
-                    name="notes"
-                    value={savedEditForm.notes}
-                    onChange={handleSavedEditChange}
-                    rows="3"
-                    className="form-control"
-                    placeholder="Saved trip notes"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <button type="submit" className="btn-primary">
-                      Save metadata
-                    </button>
-                    <button type="button" onClick={handleCancelSavedEdit} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">
-                      Cancel
-                    </button>
-                  </div>
+                  <input name="savedTitle" value={savedEditForm.savedTitle} onChange={handleSavedEditChange} className="form-control" placeholder="Saved title" />
+                  <input name="folder" value={savedEditForm.folder} onChange={handleSavedEditChange} className="form-control" placeholder="Folder" />
+                  <input name="tags" value={savedEditForm.tags} onChange={handleSavedEditChange} className="form-control" placeholder="Tags, comma-separated" />
+                  <textarea name="notes" value={savedEditForm.notes} onChange={handleSavedEditChange} rows="3" className="form-control" placeholder="Saved trip notes" />
+                  <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary">Save metadata</button><button type="button" onClick={handleCancelSavedEdit} className="btn-secondary">Cancel</button></div>
                 </form>
               ) : (
-                <>
-                  {savedTrip.notes && <p className="mt-4 text-sm leading-6 text-slate-600">{savedTrip.notes}</p>}
-                  {savedTrip.tags?.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {savedTrip.tags.map((tag) => (
-                        <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleEditSavedTrip(savedTrip)}
-                      className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
-                    >
-                      Edit metadata
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSavedTrip(savedTrip._id)}
-                      className="btn-danger"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => handleEditSavedTrip(savedTrip)} className="btn-secondary">Edit metadata</button>
+                  <button type="button" onClick={() => handleRemoveSavedTrip(savedTrip._id)} className="btn-danger">Remove</button>
+                </div>
               )}
             </article>
           ))}
         </div>
-      </div>
+      </section>
     </section>
   );
+}
+
+function CheckCircleIcon(props) {
+  return <Sparkles {...props} />;
 }
 
 export default MyTripsPage;

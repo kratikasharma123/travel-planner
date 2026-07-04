@@ -74,6 +74,32 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_or_publishable_key
 
 If your Supabase project gives a publishable key, `VITE_SUPABASE_PUBLISHABLE_KEY` is also supported by the app.
 
+### AI Trip Generation Setup
+
+AI trip generation runs in a Supabase Edge Function so the Gemini key is never exposed to the browser.
+
+Set the secrets in Supabase:
+
+```bash
+supabase secrets set GEMINI_API_KEY=your_gemini_api_key
+supabase secrets set GEMINI_MODEL=gemini-1.5-flash
+supabase secrets set AI_DAILY_LIMIT=100
+```
+
+For local Edge Function testing, also provide Supabase function env values (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `GEMINI_API_KEY`) in your local function env file, then run:
+
+```bash
+supabase functions serve generate-ai-trip --env-file ./supabase/.env.local
+```
+
+Deploy the function:
+
+```bash
+supabase functions deploy generate-ai-trip
+```
+
+Do not put `GEMINI_API_KEY` or any private AI key in `client/.env`; only browser-safe `VITE_*` values belong there.
+
 ## Supabase Setup
 
 1. Create a Supabase project.

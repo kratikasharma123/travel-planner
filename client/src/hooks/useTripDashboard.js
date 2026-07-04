@@ -1,47 +1,67 @@
-import { useEffect, useMemo, useState } from 'react';
-import * as budgetService from '../services/budgetService.js';
-import { getWeatherSummaryForTrip } from '../services/weatherService.js';
-import { getBudgetSummary } from '../utils/budgetCalculations.js';
-import { useTrips } from './useTrips.js';
+import { useCallback, useEffect, useState } from 'react';
+import * as dashboardService from '../services/dashboardService.js';
 
-function daysUntil(date) {
-  if (!date) return null;
-  return Math.ceil((new Date(date).getTime() - Date.now()) / 86400000);
+function getErrorMessage(apiError, fallback) {
+  return apiError?.response?.data?.message || apiError?.message || fallback;
 }
 
-export function useTripDashboard() {
-  const { trips, isLoading, error, refreshTrips } = useTrips();
-  const [budgets, setBudgets] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [weather, setWeather] = useState(null);
+const emptySummary = {
+  totalTrips: 0,
+  savedPlacesCount: 0,
+  bookingsCount: 0,
+  totalBudget: 0,
+  upcomingTrips: [],
+  upcomingTripsCount: 0,
+  recentTrips: [],
+  nextTrip: null,
+  daysUntilDeparture: null,
+};
 
-  useEffect(() => {
-    budgetService.listBudgets().then((data) => setBudgets(data.budgets)).catch(() => setBudgets([]));
-    budgetService.listExpenses({ limit: 1000 }).then((data) => setExpenses(data.expenses)).catch(() => setExpenses([]));
+export function useTripDashboard() {
+  const [trips, setTrips] = useState([]);
+  const [savedPlaces, setSavedPlaces] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [summary, setSummary] = useState(emptySummary);
+  const [analyticsRows, setAnalyticsRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const refreshDashboard = useCallback(async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const data = await dashboardService.getDashboardSummary();
+      setTrips(data.trips);
+      setSavedPlaces(data.savedPlaces);
+      setBookings(data.bookings);
+      setBudgets(data.budgets);
+      setSummary(data.summary);
+      setAnalyticsRows(data.analyticsRows);
+      return data;
+    } catch (apiError) {
+      setError(getErrorMessage(apiError, 'Unable to load dashboard.'));
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    const nextTrip = trips.find((trip) => daysUntil(trip.startDate) >= 0) || trips[0];
-    if (nextTrip) getWeatherSummaryForTrip(nextTrip).then(setWeather);
-  }, [trips]);
+    Promise.resolve().then(refreshDashboard);
+  }, [refreshDashboard]);
 
-  const summary = useMemo(() => {
-    const upcoming = trips.filter((trip) => daysUntil(trip.startDate) >= 0 && trip.status !== 'completed' && trip.status !== 'archived');
-    const active = trips.filter((trip) => trip.status === 'active');
-    const completed = trips.filter((trip) => trip.status === 'completed' || trip.status === 'archived');
-    const budgetSummary = getBudgetSummary({ totalBudget: budgets.reduce((sum, budget) => sum + Number(budget.totalBudget || 0), 0) }, expenses);
-    const nextTrip = upcoming.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''))[0];
-    return { upcoming, active, completed, budgetSummary, nextTrip, daysUntilDeparture: daysUntil(nextTrip?.startDate) };
-  }, [trips, budgets, expenses]);
-
-  const analyticsRows = useMemo(() => {
-    const byMonth = trips.reduce((record, trip) => {
-      const month = (trip.startDate || trip.createdAt || '').slice(0, 7) || 'Unscheduled';
-      record[month] = (record[month] || 0) + 1;
-      return record;
-    }, {});
-    return Object.entries(byMonth).map(([month, count]) => ({ month, trips: count }));
-  }, [trips]);
-
-  return { trips, budgets, expenses, weather, summary, analyticsRows, isLoading, error, refreshTrips };
+  return {
+    trips,
+    savedPlaces,
+    bookings,
+    budgets,
+    summary,
+    analyticsRows,
+    isLoading,
+    error,
+    refreshDashboard,
+    refreshTrips: refreshDashboard,
+  };
 }

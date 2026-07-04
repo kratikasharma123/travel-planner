@@ -8,7 +8,7 @@ function AdminTable({
   emptyMessage = 'No records found.',
 }) {
   if (isLoading)
-    return <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-600">Loading records...</p>;
+    return <p className="rounded-2xl bg-orange-50 p-5 text-sm font-semibold text-stone-600">Loading records...</p>;
   if (!rows.length)
     return (
       <AdminEmptyState
@@ -18,23 +18,23 @@ function AdminTable({
     );
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200">
+    <div className="overflow-x-auto rounded-[20px] border border-orange-100 bg-white shadow-sm">
       <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500">
+        <thead className="bg-orange-50/80 text-xs uppercase tracking-[0.16em] text-orange-700">
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className="px-4 py-3">
+              <th key={column.key} className="px-4 py-3 font-black">
                 {column.label}
               </th>
             ))}
-            {actions && <th className="px-4 py-3 text-right">Actions</th>}
+            {actions && <th className="px-4 py-3 text-right font-black">Actions</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="divide-y divide-orange-100 bg-white">
           {rows.map((row) => (
-            <tr key={row.id || row._id} className="hover:bg-slate-50/70">
+            <tr key={row.id || row._id} className="transition hover:bg-orange-50/50">
               {columns.map((column) => (
-                <td key={column.key} className="px-4 py-3 text-slate-700">
+                <td key={column.key} className="px-4 py-3 text-stone-700">
                   {column.render ? column.render(row) : row[column.key] || '—'}
                 </td>
               ))}

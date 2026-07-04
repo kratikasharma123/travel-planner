@@ -91,5 +91,14 @@ export function useTrips() {
     [refreshTrips]
   );
 
-  return { trips, pagination, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip };
+  const toggleFavoriteTrip = useCallback(
+    async (tripId, isFavorite) => {
+      const data = await tripService.toggleFavoriteTrip(tripId, isFavorite);
+      await refreshTrips();
+      return data.trip;
+    },
+    [refreshTrips]
+  );
+
+  return { trips, pagination, isLoading, error, refreshTrips, createTrip, updateTrip, archiveTrip, deleteTrip, duplicateTrip, toggleFavoriteTrip };
 }

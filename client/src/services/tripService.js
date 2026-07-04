@@ -107,3 +107,7 @@ export async function duplicateTrip(tripId) {
 export async function archiveTrip(tripId) {
   return updateTrip(tripId, { status: 'archived' });
 }
+
+export async function toggleFavoriteTrip(tripId, isFavorite) {
+  return updateTrip(tripId, { isFavorite });
+}

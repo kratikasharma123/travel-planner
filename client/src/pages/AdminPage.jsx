@@ -1,14 +1,12 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { dateCell, statusColumn } from '../features/admin/adminColumns.jsx';
 import {
   ADMIN_PERMISSIONS,
-  ADMIN_TABS,
   getVisibleAdminTabs,
 } from '../features/admin/adminConstants.js';
 import AdminErrorState from '../features/admin/components/AdminErrorState.jsx';
 import AdminStatusBadge from '../features/admin/components/AdminStatusBadge.jsx';
-import AdminTabs from '../features/admin/components/AdminTabs.jsx';
 import AdminRecordSection from '../features/admin/sections/AdminRecordSection.jsx';
 import OverviewSection from '../features/admin/sections/OverviewSection.jsx';
 import UsersSection from '../features/admin/sections/UsersSection.jsx';
@@ -125,12 +123,25 @@ function ReportsSection({ users, trips, bookings, aiLogs, tickets, reviews }) {
   );
 }
 
+const ADMIN_ROUTE_TAB_MAP = {
+  users: 'users',
+  trips: 'trips',
+  destinations: 'content',
+  bookings: 'bookings',
+  budgets: 'reports',
+  'ai-conversations': 'ai',
+};
+
 function AdminPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user } = useAuth();
   const visibleTabs = useMemo(() => getVisibleAdminTabs(user), [user]);
-  const activeTab = visibleTabs.some((tab) => tab.key === searchParams.get('tab'))
-    ? searchParams.get('tab')
+  const pathSegment = location.pathname.replace(/^\/admin\/?/, '').split('/')[0];
+  const routeTab = ADMIN_ROUTE_TAB_MAP[pathSegment] || pathSegment;
+  const requestedTab = routeTab || searchParams.get('tab');
+  const activeTab = visibleTabs.some((tab) => tab.key === requestedTab)
+    ? requestedTab
     : visibleTabs[0]?.key || 'overview';
   const admin = useAdmin();
   const {
@@ -155,35 +166,14 @@ function AdminPage() {
     createRecord,
   } = admin;
 
-  function setActiveTab(tab) {
-    setSearchParams({ tab });
-  }
-
   return (
-    <section className="page-stack">
-      <div className="app-card">
-        <p className="section-eyebrow">Admin control center</p>
-        <h1 className="section-title">Platform administration</h1>
-        <p className="section-description">
-          Manage users, trips, bookings, AI activity, content, reports, notifications, support,
-          reviews, settings, and audit logs.
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">
-            Role: {user?.role}
-          </span>
-          {isLoading && <span>Loading admin data...</span>}
-        </div>
-        <div className="mt-4">
+    <section className="space-y-6">
+      {(isLoading || error) && (
+        <div className="rounded-[24px] border border-orange-100 bg-white p-5 shadow-lg shadow-orange-100/40">
+          {isLoading && <p className="text-sm font-bold text-stone-600">Loading admin data...</p>}
           <AdminErrorState message={error} onRetry={refreshAdmin} />
         </div>
-      </div>
-
-      <AdminTabs
-        tabs={visibleTabs.length ? visibleTabs : ADMIN_TABS.slice(0, 1)}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-      />
+      )}
 
       {activeTab === 'overview' && (
         <OverviewSection

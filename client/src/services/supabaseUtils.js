@@ -126,6 +126,7 @@ export function mapTrip(row) {
     weatherSummary: row.weather_summary || {},
     progress: Number(row.progress || 0),
     status: row.status || 'draft',
+    isFavorite: Boolean(row.is_favorite),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -161,6 +162,7 @@ export function tripPayloadToRow(payload = {}, userId) {
       : {}),
     ...(payload.progress !== undefined ? { progress: Number(payload.progress || 0) } : {}),
     ...(payload.status !== undefined ? { status: payload.status || 'draft' } : {}),
+    ...(payload.isFavorite !== undefined ? { is_favorite: Boolean(payload.isFavorite) } : {}),
   };
 }
 
@@ -209,6 +211,58 @@ export function mapSavedTrip(row) {
     savedAt: row.saved_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function mapSavedPlace(row) {
+  if (!row) return null;
+
+  const destination = mapDestination(row.destinations);
+  const metadata = row.metadata || {};
+
+  return {
+    _id: row.id,
+    id: row.id,
+    user: row.user_id,
+    destinationId: row.destination_id,
+    destination,
+    name: row.name || destination?.name || metadata.name || '',
+    city: row.city || destination?.region || metadata.city || '',
+    country: row.country || destination?.country || metadata.country || '',
+    category: row.category || metadata.category || 'Destinations',
+    notes: row.notes || destination?.description || '',
+    imageUrl: row.image_url || destination?.imageUrl || metadata.imageUrl || '',
+    rating: Number(row.rating || metadata.rating || 4.7),
+    budgetLevel: row.budget_level || destination?.costLevel || metadata.budgetLevel || 'mid-range',
+    bestTime: row.best_time || destination?.bestTimeToVisit || metadata.bestTime || '',
+    tags: row.tags || destination?.tags || [],
+    metadata,
+    savedAt: row.saved_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    raw: metadata.raw || null,
+  };
+}
+
+function isUuid(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+export function savedPlacePayloadToRow(payload = {}, userId) {
+  return {
+    ...(userId ? { user_id: userId } : {}),
+    ...(payload.destinationId !== undefined ? { destination_id: isUuid(payload.destinationId) ? payload.destinationId : null } : {}),
+    ...(payload.name !== undefined ? { name: payload.name || '' } : {}),
+    ...(payload.city !== undefined ? { city: payload.city || '' } : {}),
+    ...(payload.country !== undefined ? { country: payload.country || '' } : {}),
+    ...(payload.category !== undefined ? { category: payload.category || 'Destinations' } : {}),
+    ...(payload.notes !== undefined ? { notes: payload.notes || '' } : {}),
+    ...(payload.imageUrl !== undefined ? { image_url: payload.imageUrl || '' } : {}),
+    ...(payload.rating !== undefined ? { rating: Number(payload.rating || 0) } : {}),
+    ...(payload.budgetLevel !== undefined ? { budget_level: payload.budgetLevel || '' } : {}),
+    ...(payload.bestTime !== undefined ? { best_time: payload.bestTime || '' } : {}),
+    ...(payload.tags !== undefined ? { tags: payload.tags || [] } : {}),
+    ...(payload.metadata !== undefined ? { metadata: payload.metadata || {} } : {}),
   };
 }
 
@@ -279,22 +333,75 @@ export function mapItineraryItem(row) {
 
 export function mapBooking(row) {
   if (!row) return null;
+  const details = row.details || {};
+  const bookingType = row.booking_type || row.type || 'activity';
+  const status = row.status || details.status || 'upcoming';
+  const startAt = row.start_at || row.booking_date || null;
+
   return {
     _id: row.id,
     id: row.id,
     tripId: row.trip_id,
+    trip: mapTrip(row.trips) || row.trip_id,
     user: row.user_id,
-    bookingType: row.booking_type,
+    bookingType,
+    type: details.displayType || bookingType,
     title: row.title,
     provider: row.provider || '',
-    referenceNumber: row.reference_number || '',
-    startAt: row.start_at,
+    referenceNumber: row.reference_number || row.confirmation_id || '',
+    confirmationId: row.reference_number || row.confirmation_id || '',
+    startAt,
     endAt: row.end_at,
-    details: row.details || {},
+    date: details.date || (startAt ? startAt.slice(0, 10) : ''),
+    time: details.time || (startAt ? new Date(startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+    location: row.location || details.location || '',
+    status,
+    price: Number(row.price || details.price || 0),
+    details,
     documentUrl: row.document_url || '',
+    image: row.image_url || details.image || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+export function bookingPayloadToRow(payload = {}, userId) {
+  const row = {
+    ...(userId ? { user_id: userId } : {}),
+    ...(payload.tripId !== undefined ? { trip_id: payload.tripId || null } : {}),
+    ...(payload.bookingType !== undefined || payload.type !== undefined ? { booking_type: payload.bookingType || payload.type || 'activity' } : {}),
+    ...(payload.title !== undefined ? { title: payload.title } : {}),
+    ...(payload.provider !== undefined ? { provider: payload.provider || '' } : {}),
+    ...(payload.referenceNumber !== undefined || payload.confirmationId !== undefined
+      ? { reference_number: payload.referenceNumber || payload.confirmationId || '' }
+      : {}),
+    ...(payload.endAt !== undefined ? { end_at: payload.endAt || null } : {}),
+    ...(payload.location !== undefined ? { location: payload.location || '' } : {}),
+    ...(payload.status !== undefined ? { status: payload.status || 'upcoming' } : {}),
+    ...(payload.price !== undefined ? { price: Number(payload.price || 0) } : {}),
+    ...(payload.documentUrl !== undefined ? { document_url: payload.documentUrl || '' } : {}),
+    ...(payload.image !== undefined || payload.imageUrl !== undefined ? { image_url: payload.image || payload.imageUrl || '' } : {}),
+  };
+
+  if (payload.startAt !== undefined || payload.date !== undefined || payload.time !== undefined) {
+    const date = payload.date || '';
+    const time = payload.time || '';
+    row.start_at = payload.startAt || (date ? new Date(`${date}T${time || '00:00'}`).toISOString() : null);
+  }
+
+  if (payload.details !== undefined || payload.date !== undefined || payload.time !== undefined || payload.location !== undefined || payload.price !== undefined || payload.image !== undefined || payload.imageUrl !== undefined || payload.type !== undefined) {
+    row.details = {
+      ...(payload.details || {}),
+      ...(payload.date !== undefined ? { date: payload.date || '' } : {}),
+      ...(payload.time !== undefined ? { time: payload.time || '' } : {}),
+      ...(payload.location !== undefined ? { location: payload.location || '' } : {}),
+      ...(payload.price !== undefined ? { price: Number(payload.price || 0) } : {}),
+      ...(payload.image !== undefined || payload.imageUrl !== undefined ? { image: payload.image || payload.imageUrl || '' } : {}),
+      ...(payload.displayType !== undefined || payload.type !== undefined ? { displayType: payload.displayType || payload.type || '' } : {}),
+    };
+  }
+
+  return row;
 }
 
 export function mapChecklistItem(row) {

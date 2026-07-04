@@ -46,7 +46,7 @@ function ResetPasswordPage() {
       <p className="section-eyebrow">Secure reset</p>
       <h1 className="section-title">Create a new password</h1>
       <p className="section-description">
-        Choose a strong password for your TravelAI Planner account.
+        Choose a strong password for your TripSafar account.
       </p>
 
       {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}

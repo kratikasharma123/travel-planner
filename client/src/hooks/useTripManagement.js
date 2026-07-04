@@ -54,13 +54,29 @@ export function useTripManagement() {
     }
   }, []);
 
-  const createGeneratedItinerary = useCallback(async (trip) => {
-    const generated = generateItinerary({ trip, days: trip?.durationDays || 3 });
-    const data = await tripManagementService.createItinerary({ tripId: trip._id, title: generated.title, source: 'ai', status: 'saved' });
-    const itemData = await tripManagementService.createItineraryItems(data.itinerary, generated.items);
-    setItineraries((current) => [data.itinerary, ...current]);
-    setItineraryItems(itemData.items);
-    return { itinerary: data.itinerary, items: itemData.items };
+  const createGeneratedItinerary = useCallback(async (trip, options = {}) => {
+    if (!trip?._id) return null;
+    setIsLoading(true);
+    setError('');
+    try {
+      const generated = await generateItinerary({
+        trip,
+        days: trip?.durationDays || 3,
+        interests: options.interests || trip?.interests || [],
+        draft: options.draft || {},
+        weather: options.weather || null,
+      });
+      const data = await tripManagementService.createItinerary({ tripId: trip._id, title: generated.title, source: 'ai', status: 'saved' });
+      const itemData = await tripManagementService.createItineraryItems(data.itinerary, generated.items);
+      setItineraries((current) => [data.itinerary, ...current]);
+      setItineraryItems(itemData.items);
+      return { itinerary: data.itinerary, items: itemData.items, generated };
+    } catch (apiError) {
+      setError(getErrorMessage(apiError, 'Unable to generate AI itinerary.'));
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const seedPackingChecklist = useCallback(async (trip) => {

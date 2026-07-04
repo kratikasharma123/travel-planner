@@ -5,6 +5,7 @@ function applyDestinationFilters(query, params = {}) {
   if (params.country) query.ilike('country', `%${params.country}%`);
   if (params.region) query.ilike('region', `%${params.region}%`);
   if (params.costLevel) query.eq('cost_level', params.costLevel);
+  if (params.category && params.category !== 'All') query.contains('tags', [params.category.toLowerCase()]);
   if (params.tag) query.contains('tags', [params.tag]);
   if (params.search) query.or(`name.ilike.%${params.search}%,country.ilike.%${params.search}%,region.ilike.%${params.search}%,description.ilike.%${params.search}%`);
   return query;

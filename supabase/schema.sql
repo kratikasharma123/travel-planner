@@ -826,6 +826,108 @@ to authenticated
 using (public.has_admin_permission('content:write'))
 with check (public.has_admin_permission('content:write'));
 
+-- Milestone 4: Core non-AI travel CRUD tables.
+alter table public.trips add column if not exists is_favorite boolean not null default false;
+
+create table if not exists public.saved_places (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  destination_id uuid references public.destinations(id) on delete set null,
+  name text not null,
+  city text not null default '',
+  country text not null default '',
+  category text not null default 'Destinations',
+  notes text not null default '',
+  image_url text not null default '',
+  rating numeric not null default 4.7 check (rating >= 0 and rating <= 5),
+  budget_level text not null default 'mid-range',
+  best_time text not null default '',
+  tags text[] not null default '{}',
+  metadata jsonb not null default '{}'::jsonb,
+  saved_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, destination_id),
+  unique (user_id, name, country)
+);
+
+create table if not exists public.bookings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  trip_id uuid references public.trips(id) on delete set null,
+  booking_type text not null default 'activity' check (booking_type in ('flight', 'hotel', 'transport', 'activity', 'tour')),
+  title text not null,
+  provider text not null default '',
+  reference_number text not null default '',
+  start_at timestamptz,
+  end_at timestamptz,
+  location text not null default '',
+  status text not null default 'upcoming' check (status in ('upcoming', 'completed', 'cancelled')),
+  price numeric not null default 0 check (price >= 0),
+  details jsonb not null default '{}'::jsonb,
+  document_url text not null default '',
+  image_url text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists trips_user_favorite_idx on public.trips(user_id, is_favorite);
+create index if not exists saved_places_user_saved_at_idx on public.saved_places(user_id, saved_at desc);
+create index if not exists saved_places_user_category_idx on public.saved_places(user_id, category);
+create index if not exists saved_places_tags_idx on public.saved_places using gin(tags);
+create index if not exists bookings_user_start_idx on public.bookings(user_id, start_at);
+create index if not exists bookings_user_type_status_idx on public.bookings(user_id, booking_type, status);
+
+create or replace trigger saved_places_set_updated_at before update on public.saved_places for each row execute function public.set_updated_at();
+create or replace trigger bookings_set_updated_at before update on public.bookings for each row execute function public.set_updated_at();
+
+alter table public.saved_places enable row level security;
+alter table public.bookings enable row level security;
+
+-- Destinations are public-readable for Milestone 4 discovery pages.
+drop policy if exists "Public can read active destinations" on public.destinations;
+create policy "Public can read active destinations"
+on public.destinations for select
+to anon, authenticated
+using (status = 'active');
+
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array['saved_places','bookings'] loop
+    execute format('drop policy if exists "Users can read own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can read own %1$s" on public.%1$I for select to authenticated using (auth.uid() = user_id)', table_name);
+    execute format('drop policy if exists "Users can create own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can create own %1$s" on public.%1$I for insert to authenticated with check (auth.uid() = user_id)', table_name);
+    execute format('drop policy if exists "Users can update own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can update own %1$s" on public.%1$I for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)', table_name);
+    execute format('drop policy if exists "Users can delete own %1$s" on public.%1$I', table_name);
+    execute format('create policy "Users can delete own %1$s" on public.%1$I for delete to authenticated using (auth.uid() = user_id)', table_name);
+  end loop;
+end;
+$$;
+
+-- Booking trip relation guard: booking can be linked only to user's own trip.
+drop policy if exists "Users can create own bookings" on public.bookings;
+create policy "Users can create own bookings"
+on public.bookings for insert
+to authenticated
+with check (
+  auth.uid() = user_id
+  and (trip_id is null or exists (select 1 from public.trips where trips.id = bookings.trip_id and trips.user_id = auth.uid()))
+);
+
+drop policy if exists "Users can update own bookings" on public.bookings;
+create policy "Users can update own bookings"
+on public.bookings for update
+to authenticated
+using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and (trip_id is null or exists (select 1 from public.trips where trips.id = bookings.trip_id and trips.user_id = auth.uid()))
+);
+
 -- Optional seed rows for local/manual testing. Uncomment and customize if needed.
 -- insert into public.destinations (name, country, region, description, cost_level, tags, popular_attractions)
 -- values
