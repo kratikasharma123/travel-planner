@@ -18,15 +18,17 @@ export async function updateProfile(payload) {
   throwIfError(authError, 'Unable to refresh user session.');
 
   const updates = {
-    id: userId,
-    email: authData.user?.email || '',
     name: payload.name ?? authData.user?.user_metadata?.name ?? '',
     ...(payload.travelPreferences !== undefined ? { travel_preferences: payload.travelPreferences } : {}),
     ...(payload.avatarUrl !== undefined ? { avatar_url: payload.avatarUrl || '' } : {}),
-    updated_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase.from('profiles').upsert(updates, { onConflict: 'id' }).select('*').single();
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select('*')
+    .single();
   throwIfError(error, 'Profile update failed. Please try again.');
 
   return { user: mapProfile(data, authData.user) };

@@ -11,11 +11,6 @@ async function getProfileForAuthUser(authUser) {
     .maybeSingle();
   throwIfError(error, 'Unable to load profile.');
 
-  if (authUser.email && data && data.email !== authUser.email) {
-    await supabase.from('profiles').update({ email: authUser.email }).eq('id', authUser.id);
-    return mapProfile({ ...data, email: authUser.email }, authUser);
-  }
-
   return mapProfile(data, authUser);
 }
 
