@@ -99,6 +99,12 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  const uploadProfileAvatar = useCallback(async (file) => {
+    const data = await userService.uploadProfileAvatar(file);
+    if (data.user) setUser(data.user);
+    return data;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -112,6 +118,7 @@ export function AuthProvider({ children }) {
       refreshCurrentUser,
       updateProfile,
       updatePreferences,
+      uploadProfileAvatar,
     }),
     [
       user,
@@ -124,6 +131,7 @@ export function AuthProvider({ children }) {
       refreshCurrentUser,
       updateProfile,
       updatePreferences,
+      uploadProfileAvatar,
     ]
   );
 

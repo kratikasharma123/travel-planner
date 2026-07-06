@@ -86,10 +86,12 @@ function UserActions({ row, updateUser, isMutating }) {
   );
 }
 
-function UsersSection({ users, updateUser, isMutating }) {
-  const [search, setSearch] = useState('');
+function UsersSection({ users, updateUser, isMutating, globalSearch = '' }) {
+  const [localSearch, setLocalSearch] = useState('');
   const [status, setStatus] = useState('');
   const [role, setRole] = useState('');
+
+  const search = localSearch || globalSearch;
 
   const filteredUsers = useMemo(() => {
     let next = filterRows(users, search, ['name', 'email', 'role', 'status']);
@@ -106,7 +108,7 @@ function UsersSection({ users, updateUser, isMutating }) {
     >
       <AdminToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={setLocalSearch}
         resultCount={filteredUsers.length}
         filters={[
           {

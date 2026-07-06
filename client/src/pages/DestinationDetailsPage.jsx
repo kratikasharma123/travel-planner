@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Heart, MapPin, Plane, Sparkles, Star, Wallet } from 'lucide-react';
 import { fallbackDestinations } from '../data/destinationData.js';
 import { useSavedPlaces } from '../hooks/useSavedPlaces.js';
+import { getDestination } from '../services/destinationService.js';
+import { createDestinationReview, listDestinationReviews } from '../services/reviewService.js';
 
 function normalizeSlug(value = '') {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -34,9 +36,46 @@ function DestinationDetailsPage() {
   const { destinationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const destination = findDestination(destinationId, location.state?.destination);
+  const [destination, setDestination] = useState(() => findDestination(destinationId, location.state?.destination));
   const { savePlace } = useSavedPlaces();
   const [message, setMessage] = useState('');
+  const [reviews, setReviews] = useState([]);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+
+  useEffect(() => {
+    let isMounted = true;
+    if (location.state?.destination) return undefined;
+
+    getDestination(destinationId)
+      .then((data) => {
+        if (isMounted) setDestination(data.destination);
+      })
+      .catch((apiError) => {
+        if (isMounted) setMessage(apiError?.response?.data?.message || apiError?.message || 'Destination not found.');
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [destinationId, location.state?.destination]);
+
+  useEffect(() => {
+    const id = destination?.id || destination?._id;
+    if (!id) return undefined;
+    let isMounted = true;
+
+    listDestinationReviews(id)
+      .then((data) => {
+        if (isMounted) setReviews(data.reviews);
+      })
+      .catch(() => {
+        if (isMounted) setReviews([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [destination?.id, destination?._id]);
 
   async function handleSavePlace() {
     setMessage('');
@@ -45,6 +84,21 @@ function DestinationDetailsPage() {
       setMessage('Destination saved successfully.');
     } catch (apiError) {
       setMessage(apiError?.response?.data?.message || apiError?.message || 'Unable to save place.');
+    }
+  }
+
+  async function handleReviewSubmit(event) {
+    event.preventDefault();
+    const id = destination?.id || destination?._id;
+    if (!id) return;
+    setMessage('');
+    try {
+      const data = await createDestinationReview(id, reviewForm);
+      setReviews((current) => [data.review, ...current]);
+      setReviewForm({ rating: 5, comment: '' });
+      setMessage('Review submitted for admin moderation.');
+    } catch (apiError) {
+      setMessage(apiError?.response?.data?.message || apiError?.message || 'Unable to save review.');
     }
   }
 
@@ -123,6 +177,40 @@ function DestinationDetailsPage() {
               <span key={tag} className="rounded-full bg-white px-4 py-2 text-sm font-black text-orange-600 shadow-sm ring-1 ring-orange-100">
                 {tag}
               </span>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[0.8fr_1fr]">
+        <article className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-xl shadow-orange-100/40">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Write a review</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Share your experience</h2>
+          <form className="mt-5 grid gap-4" onSubmit={handleReviewSubmit}>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Rating
+              <select value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))} className="form-control">
+                {[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating}/5</option>)}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Comment
+              <textarea value={reviewForm.comment} onChange={(event) => setReviewForm((current) => ({ ...current, comment: event.target.value }))} required rows="4" className="form-control" placeholder="What should other travelers know?" />
+            </label>
+            <button type="submit" className="btn-primary">Submit review</button>
+          </form>
+        </article>
+
+        <article className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-xl shadow-orange-100/40">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Traveler reviews</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Real submitted feedback</h2>
+          <div className="mt-5 grid gap-3">
+            {reviews.length === 0 && <p className="rounded-2xl bg-orange-50 p-4 text-sm font-bold text-slate-600">No reviews yet.</p>}
+            {reviews.map((review) => (
+              <div key={review.id} className="rounded-2xl bg-orange-50 p-4">
+                <p className="text-sm font-black text-slate-950">{review.rating}/5 • {review.status}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{review.comment}</p>
+              </div>
             ))}
           </div>
         </article>

@@ -30,6 +30,8 @@ import { useSavedTrips } from '../hooks/useSavedTrips.js';
 import { useTrips } from '../hooks/useTrips.js';
 
 const interestOptions = ['Beach', 'Mountains', 'Adventure', 'Food', 'Culture', 'Shopping', 'Nature', 'Luxury'];
+const acceptedAvatarTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const maxAvatarSize = 5 * 1024 * 1024;
 
 const dummyActivities = [
   { title: 'Trip created', description: 'Jaipur weekend escape was added to your travel board.', icon: Plane, tone: 'bg-orange-50 text-orange-600' },
@@ -89,6 +91,39 @@ function getStoredAccountSettings() {
   }
 }
 
+function getAvatarStorageKey(userId) {
+  return userId ? `tripsafar-profile-avatar-preview-${userId}` : '';
+}
+
+function getStoredAvatarPreview(userId) {
+  try {
+    const key = getAvatarStorageKey(userId);
+    return key ? window.localStorage.getItem(key) || '' : '';
+  } catch {
+    return '';
+  }
+}
+
+function saveStoredAvatarPreview(userId, value) {
+  try {
+    const key = getAvatarStorageKey(userId);
+    if (!key) return;
+    if (value) window.localStorage.setItem(key, value);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Ignore local preview persistence failures, for example browser storage quota limits.
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 function getTripCountry(trip) {
   return trip?.country || trip?.customDestination?.country || trip?.destination?.country || '';
 }
@@ -125,11 +160,15 @@ function ToggleRow({ icon: Icon, label, description, enabled, onChange }) {
 function ProfilePage() {
   const personalInfoRef = useRef(null);
   const nameInputRef = useRef(null);
-  const { user, updateProfile, requestPasswordReset } = useAuth();
+  const avatarInputRef = useRef(null);
+  const avatarObjectUrlRef = useRef('');
+  const { user, updateProfile, uploadProfileAvatar, requestPasswordReset } = useAuth();
   const { trips } = useTrips();
   const { savedTrips } = useSavedTrips();
   const [formData, setFormData] = useState(() => preferencesToForm(user));
   const [settings, setSettings] = useState(getStoredAccountSettings);
+  const [avatarPreview, setAvatarPreview] = useState(() => user?.avatarUrl || getStoredAvatarPreview(user?.id));
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [error, setError] = useState('');
@@ -137,8 +176,15 @@ function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.resolve().then(() => setFormData(preferencesToForm(user)));
+    Promise.resolve().then(() => {
+      setFormData(preferencesToForm(user));
+      setAvatarPreview(user?.avatarUrl || getStoredAvatarPreview(user?.id));
+    });
   }, [user]);
+
+  useEffect(() => () => {
+    if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem('tripsafar-account-settings', JSON.stringify(settings));
@@ -200,6 +246,62 @@ function ProfilePage() {
   function handleEditProfile() {
     personalInfoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.setTimeout(() => nameInputRef.current?.focus(), 450);
+  }
+
+  function openAvatarPicker() {
+    if (!isUploadingAvatar) avatarInputRef.current?.click();
+  }
+
+  function validateAvatarFile(file) {
+    if (!file) return 'Please choose an image file.';
+    if (!acceptedAvatarTypes.includes(file.type)) return 'Only JPG, JPEG, PNG, and WEBP images are allowed.';
+    if (file.size > maxAvatarSize) return 'Image size must be 5MB or less.';
+    return '';
+  }
+
+  async function handleAvatarChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    const validationError = validateAvatarFile(file);
+    if (validationError) {
+      setError(validationError);
+      setSuccess('');
+      return;
+    }
+
+    if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current);
+    const previewUrl = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = previewUrl;
+    setAvatarPreview(previewUrl);
+    setError('');
+    setSuccess('Uploading profile photo...');
+    setIsUploadingAvatar(true);
+
+    try {
+      const result = await uploadProfileAvatar(file);
+      if (result.storageConfigured && result.avatarUrl) {
+        saveStoredAvatarPreview(user?.id, '');
+        if (avatarObjectUrlRef.current) {
+          URL.revokeObjectURL(avatarObjectUrlRef.current);
+          avatarObjectUrlRef.current = '';
+        }
+        setAvatarPreview(result.avatarUrl);
+        setSuccess('Profile photo updated successfully.');
+        return;
+      }
+
+      const localAvatar = await readFileAsDataUrl(file);
+      saveStoredAvatarPreview(user?.id, localAvatar);
+      setAvatarPreview(localAvatar || previewUrl);
+      setSuccess('Preview saved on this device. Supabase Storage is not configured yet, so the photo was not uploaded.');
+    } catch (apiError) {
+      setError(apiError?.response?.data?.message || apiError?.message || 'Profile photo upload failed. Please try again.');
+      setSuccess('');
+      setAvatarPreview(user?.avatarUrl || '');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   }
 
   function updateSetting(key, value) {
@@ -281,9 +383,23 @@ function ProfilePage() {
        
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="relative grid h-28 w-28 shrink-0 place-items-center rounded-[2rem] bg-white text-5xl font-black text-orange-500 ring-4 ring-white/70">
-              {avatarInitial}
-              <span className="absolute -bottom-2 -right-2 grid h-10 w-10 place-items-center rounded-2xl bg-orange-500 text-white"><Camera className="h-5 w-5" /></span>
+            <div className="relative grid h-28 w-28 shrink-0 place-items-center overflow-visible rounded-[2rem] bg-white text-5xl font-black text-orange-500 ring-4 ring-white/70">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt={`${formData.name || 'Traveler'} profile`} className="h-full w-full rounded-[2rem] object-cover" />
+              ) : (
+                avatarInitial
+              )}
+              <input ref={avatarInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="sr-only" aria-label="Choose profile photo" />
+              <button
+                type="button"
+                title="Change profile photo"
+                aria-label="Change profile photo"
+                disabled={isUploadingAvatar}
+                onClick={openAvatarPicker}
+                className="absolute -bottom-2 -right-2 grid h-10 w-10 place-items-center rounded-2xl bg-orange-500 text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-80"
+              >
+                {isUploadingAvatar ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <Camera className="h-5 w-5" />}
+              </button>
             </div>
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-orange-100 backdrop-blur"><Sparkles className="h-4 w-4" />Profile cockpit</p>

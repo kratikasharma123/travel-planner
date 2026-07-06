@@ -24,18 +24,19 @@ import SmartSuggestionCard from '../features/travelAssistant/components/SmartSug
 import WeatherMapPanels from '../features/travelAssistant/components/WeatherMapPanels.jsx';
 import { useTripManagement } from '../hooks/useTripManagement.js';
 import { useTrips } from '../hooks/useTrips.js';
-import { generateSmartSuggestions } from '../services/aiTravelService.js';
+import { generateDestinationRecommendations, generateSmartSuggestions } from '../services/aiTravelService.js';
+import { saveDestinationRecommendations } from '../services/tripManagementService.js';
 import { getWeatherSummaryForTrip } from '../services/weatherService.js';
 import { currencyFormat } from '../utils/budgetCalculations.js';
 
 const interestOptions = ['Food', 'Hidden gems', 'Nature', 'Culture', 'Adventure', 'Family'];
 
 const aiActionCards = [
-  { title: 'Reduce budget', description: 'Find smarter swaps for stays, transport, and paid activities.', icon: DollarSign, tone: 'bg-orange-50 text-orange-600' },
-  { title: 'Add hidden gems', description: 'Blend local cafes, quiet viewpoints, and authentic culture stops.', icon: Gem, tone: 'bg-amber-50 text-amber-600' },
-  { title: 'Make family-friendly', description: 'Adjust pace, safety notes, rest breaks, and kid-friendly ideas.', icon: HeartHandshake, tone: 'bg-emerald-50 text-emerald-600' },
-  { title: 'Add food recommendations', description: 'Plan meals around markets, signature dishes, and local favorites.', icon: ChefHat, tone: 'bg-orange-50 text-orange-600' },
-  { title: 'Add adventure activities', description: 'Add hikes, water sports, scenic routes, and outdoor moments.', icon: Mountain, tone: 'bg-teal-50 text-teal-600' },
+  { title: 'Reduce budget', description: 'Find smarter swaps for stays, transport, and paid activities.', icon: DollarSign, tone: 'bg-orange-50 text-orange-600', action: 'reduce-budget' },
+  { title: 'Add hidden gems', description: 'Blend local cafes, quiet viewpoints, and authentic culture stops.', icon: Gem, tone: 'bg-amber-50 text-amber-600', action: 'hidden-gems' },
+  { title: 'Make family-friendly', description: 'Adjust pace, safety notes, rest breaks, and kid-friendly ideas.', icon: HeartHandshake, tone: 'bg-emerald-50 text-emerald-600', action: 'family-friendly' },
+  { title: 'Add food recommendations', description: 'Plan meals around markets, signature dishes, and local favorites.', icon: ChefHat, tone: 'bg-orange-50 text-orange-600', action: 'food-recommendations' },
+  { title: 'Add adventure activities', description: 'Add hikes, water sports, scenic routes, and outdoor moments.', icon: Mountain, tone: 'bg-teal-50 text-teal-600', action: 'adventure-activities' },
   { title: 'Create packing list', description: 'Generate essentials based on destination, weather, and trip style.', icon: PackageCheck, tone: 'bg-lime-50 text-lime-700', action: 'packing' },
 ];
 
@@ -51,14 +52,44 @@ function isUuid(value) {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function getTripDays(trip) {
-  if (trip?.durationDays) return trip.durationDays;
-  if (!trip?.startDate || !trip?.endDate) return 'Flexible';
+function getTripDayCount(trip) {
+  if (trip?.durationDays) return Number(trip.durationDays);
+  if (!trip?.startDate || !trip?.endDate) return null;
 
   const start = new Date(trip.startDate);
   const end = new Date(trip.endDate);
-  const diff = Math.max(1, Math.round((end - start) / 86400000) + 1);
-  return diff;
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+function getTripDays(trip) {
+  return getTripDayCount(trip) || 'Flexible';
+}
+
+function getTimelineDays(items = [], trip) {
+  const generatedDays = groupDays(items);
+  const tripDayCount = getTripDayCount(trip);
+  if (!tripDayCount) return generatedDays;
+
+  const maxDay = Math.max(tripDayCount, generatedDays.at(-1) || 0);
+  return Array.from({ length: maxDay }, (_, index) => index + 1);
+}
+
+function getAiActionLabel(action) {
+  return aiActionCards.find((card) => card.action === action)?.title || 'AI';
+}
+
+function compactItineraryItems(items = []) {
+  return items.slice(0, 24).map((item) => ({
+    dayNumber: item.dayNumber,
+    timeBlock: item.timeBlock,
+    title: item.title,
+    description: item.description?.slice(0, 180) || '',
+    locationName: item.locationName || '',
+    category: item.category || 'activity',
+    estimatedCost: item.estimatedCost || 0,
+    sortOrder: item.sortOrder || 0,
+  }));
 }
 
 function PlannerPage() {
@@ -80,6 +111,7 @@ function PlannerPage() {
     notes: '',
   });
   const [selectedInterests, setSelectedInterests] = useState(['Hidden gems', 'Food']);
+  const [activeAiAction, setActiveAiAction] = useState('');
   const [success, setSuccess] = useState('');
   const [formError, setFormError] = useState('');
   const [isSubmittingTrip, setIsSubmittingTrip] = useState(false);
@@ -90,12 +122,17 @@ function PlannerPage() {
     locations,
     recommendations,
     refreshTripManagement,
+    createGeneratedItinerary,
+    seedPackingChecklist,
+    toggleChecklistItem,
+    setRecommendations,
+    locationsCrud,
     isLoading,
     error,
   } = useTripManagement();
   const selectedTrip = trips.find((trip) => trip._id === selectedTripId) || trips[0];
   const smartSuggestions = useMemo(() => generateSmartSuggestions({ trip: selectedTrip, weather }), [selectedTrip, weather]);
-  const days = groupDays(itineraryItems);
+  const days = getTimelineDays(itineraryItems, selectedTrip);
   const tripDays = getTripDays(selectedTrip);
   const aiScore = selectedTrip ? Math.min(98, 78 + days.length * 4 + selectedInterests.length * 2) : 86;
 
@@ -117,21 +154,87 @@ function PlannerPage() {
     );
   }
 
-  function showAiComingSoon() {
+  async function handleGenerateItinerary(action = '') {
+    const requestedAction = typeof action === 'string' ? action : '';
     setFormError('');
-    setSuccess('AI feature will be added in a future milestone.');
+    setSuccess('');
+
+    if (!selectedTrip?._id) {
+      setFormError('Save or select a trip before generating an AI itinerary.');
+      return;
+    }
+
+    const result = await createGeneratedItinerary(selectedTrip, {
+      days: getTripDayCount(selectedTrip),
+      interests: selectedInterests,
+      draft: {
+        ...plannerDraft,
+        existingItineraryItems: requestedAction ? compactItineraryItems(itineraryItems) : [],
+      },
+      weather,
+      action: requestedAction,
+    });
+
+    if (result) {
+      const actionLabel = getAiActionLabel(requestedAction);
+      setSuccess(requestedAction ? `${actionLabel} applied. A fresh improved itinerary is now shown below.` : 'AI itinerary generated and saved successfully.');
+    }
   }
 
-  function handleGenerateItinerary() {
-    showAiComingSoon();
+  async function handleRecommendations() {
+    setFormError('');
+    setSuccess('');
+
+    try {
+      const generated = await generateDestinationRecommendations({
+        budget: selectedTrip?.budget || plannerDraft.budget,
+        interests: selectedTrip?.interests?.length ? selectedTrip.interests : selectedInterests,
+        season: selectedTrip?.startDate || plannerDraft.startDate,
+      });
+
+      setRecommendations(generated);
+
+      if (selectedTrip?._id && generated.length) {
+        const saved = await saveDestinationRecommendations(generated, selectedTrip._id);
+        setRecommendations(saved.recommendations);
+        setSuccess('Destination recommendations generated and saved.');
+        return;
+      }
+
+      setSuccess('Destination recommendations generated. Select a saved trip to store them.');
+    } catch (apiError) {
+      setFormError(apiError?.response?.data?.message || apiError?.message || 'Unable to generate recommendations.');
+    }
   }
 
-  function handleRecommendations() {
-    showAiComingSoon();
-  }
+  async function handleAiAction(action) {
+    setFormError('');
+    setSuccess('');
+    setActiveAiAction(action);
 
-  function handleAiAction() {
-    showAiComingSoon();
+    if (action === 'packing') {
+      if (!selectedTrip?._id) {
+        setFormError('Save or select a trip before generating a packing list.');
+        setActiveAiAction('');
+        return;
+      }
+
+      try {
+        await seedPackingChecklist(selectedTrip);
+        setSuccess('Packing checklist generated.');
+      } catch (apiError) {
+        setFormError(apiError?.response?.data?.message || apiError?.message || 'Unable to generate packing list.');
+      } finally {
+        setActiveAiAction('');
+      }
+      return;
+    }
+
+    try {
+      await handleGenerateItinerary(action);
+    } finally {
+      setActiveAiAction('');
+    }
   }
 
   async function handleSaveTrip() {
@@ -170,6 +273,26 @@ function PlannerPage() {
       setFormError(apiError?.response?.data?.message || apiError?.message || 'Unable to save trip.');
     } finally {
       setIsSubmittingTrip(false);
+    }
+  }
+
+  async function handleSaveMapLocation(location) {
+    if (!selectedTrip?._id) {
+      setFormError('Save or select a trip before saving map locations.');
+      return;
+    }
+
+    setFormError('');
+    setSuccess('');
+    try {
+      await locationsCrud.create({
+        ...location,
+        tripId: selectedTrip._id,
+      });
+      await refreshTripManagement(selectedTrip._id);
+      setSuccess('Map location saved to this trip.');
+    } catch (apiError) {
+      setFormError(apiError?.response?.data?.message || apiError?.message || 'Unable to save map location.');
     }
   }
 
@@ -407,10 +530,12 @@ function PlannerPage() {
               {aiActionCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <button key={card.title} type="button" onClick={() => handleAiAction(card.action)} className="group flex items-start gap-3 rounded-2xl bg-white p-4 text-left ring-1 ring-orange-50 transition hover:-translate-y-1 hover:shadow-lg">
-                    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${card.tone}`}><Icon className="h-5 w-5" /></span>
+                  <button key={card.title} type="button" disabled={isLoading || Boolean(activeAiAction)} onClick={() => handleAiAction(card.action)} className="group flex items-start gap-3 rounded-2xl bg-white p-4 text-left ring-1 ring-orange-50 transition hover:-translate-y-1 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70">
+                    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${card.tone}`}>
+                      {activeAiAction === card.action ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-current/30 border-t-current" /> : <Icon className="h-5 w-5" />}
+                    </span>
                     <span>
-                      <span className="font-black text-slate-950 group-hover:text-orange-600">{card.title}</span>
+                      <span className="font-black text-slate-950 group-hover:text-orange-600">{activeAiAction === card.action ? 'Improving...' : card.title}</span>
                       <span className="mt-1 block text-sm leading-5 text-slate-600">{card.description}</span>
                     </span>
                   </button>
@@ -421,7 +546,7 @@ function PlannerPage() {
         </aside>
       </div>
 
-      <ChecklistPanel items={checklists} onSeed={showAiComingSoon} />
+      <ChecklistPanel items={checklists} onSeed={() => handleAiAction('packing')} onToggleItem={toggleChecklistItem} />
 
       <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -443,7 +568,12 @@ function PlannerPage() {
         <div className="mt-5 grid gap-4 md:grid-cols-3">{smartSuggestions.map((suggestion) => <SmartSuggestionCard key={suggestion.title} suggestion={suggestion} />)}</div>
       </section>
 
-      <WeatherMapPanels weather={weather} locations={locations} />
+      <WeatherMapPanels
+        weather={weather}
+        locations={locations}
+        selectedTrip={selectedTrip}
+        onSaveLocation={handleSaveMapLocation}
+      />
     </section>
   );
 }

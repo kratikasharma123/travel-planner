@@ -19,10 +19,13 @@ create table if not exists public.profiles (
   role text not null default 'user' check (role in ('user', 'admin')),
   status text not null default 'active' check (status in ('active', 'suspended', 'disabled')),
   travel_preferences jsonb not null default '{}'::jsonb,
+  avatar_url text not null default '',
   last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists avatar_url text not null default '';
 
 create table if not exists public.destinations (
   id uuid primary key default gen_random_uuid(),
@@ -560,6 +563,35 @@ insert into storage.buckets (id, name, public)
 values ('travel-documents', 'travel-documents', false)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('profile-images', 'profile-images', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Public can read profile images" on storage.objects;
+create policy "Public can read profile images"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'profile-images');
+
+drop policy if exists "Users can upload own profile images" on storage.objects;
+create policy "Users can upload own profile images"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'profile-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Users can update own profile images" on storage.objects;
+create policy "Users can update own profile images"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'profile-images' and (storage.foldername(name))[1] = auth.uid()::text)
+with check (bucket_id = 'profile-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Users can delete own profile images" on storage.objects;
+create policy "Users can delete own profile images"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'profile-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
 do $$
 begin
   if exists (
@@ -934,3 +966,153 @@ with check (
 --   ('Goa', 'India', 'West India', 'Beach destination with nightlife, food, and heritage areas.', 'mid-range', array['beach','food','nightlife'], array['Baga Beach','Fort Aguada']),
 --   ('Jaipur', 'India', 'Rajasthan', 'Historic pink city with forts, markets, and palaces.', 'budget', array['history','culture','food'], array['Amber Fort','City Palace'])
 -- on conflict do nothing;
+
+-- Milestone 7: Real admin data, reporting, and review policies.
+alter table public.profiles add column if not exists email text not null default '';
+
+create index if not exists profiles_email_idx on public.profiles(email);
+create index if not exists bookings_created_idx on public.bookings(created_at desc);
+create index if not exists budgets_created_idx on public.budgets(created_at desc);
+create index if not exists budget_expenses_created_idx on public.budget_expenses(created_at desc);
+create index if not exists reviews_user_created_idx on public.reviews(user_id, created_at desc);
+create index if not exists trip_notifications_created_idx on public.trip_notifications(created_at desc);
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, name, email)
+  values (new.id, coalesce(new.raw_user_meta_data->>'name', ''), coalesce(new.email, ''))
+  on conflict (id) do update set
+    name = coalesce(nullif(public.profiles.name, ''), excluded.name),
+    email = coalesce(nullif(excluded.email, ''), public.profiles.email),
+    updated_at = now();
+  return new;
+end;
+$$;
+
+-- Users can create and read their own reviews. Admins moderate all review rows from the admin panel.
+drop policy if exists "Users can read approved reviews" on public.reviews;
+create policy "Users can read approved reviews"
+on public.reviews for select
+to authenticated
+using (status = 'approved' or auth.uid() = user_id or public.has_admin_permission('reviews:read'));
+
+drop policy if exists "Users can create own reviews" on public.reviews;
+create policy "Users can create own reviews"
+on public.reviews for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own pending reviews" on public.reviews;
+create policy "Users can update own pending reviews"
+on public.reviews for update
+to authenticated
+using (auth.uid() = user_id and status in ('pending', 'reported'))
+with check (auth.uid() = user_id and status in ('pending', 'reported'));
+
+-- Admin permission-specific policies for admin-managed profiles.
+drop policy if exists "Admins can create profiles" on public.profiles;
+create policy "Admins can create profiles"
+on public.profiles for insert
+to authenticated
+with check (public.has_admin_permission('users:write'));
+
+drop policy if exists "Admins can delete profiles" on public.profiles;
+create policy "Admins can delete profiles"
+on public.profiles for delete
+to authenticated
+using (public.has_admin_permission('users:delete'));
+
+-- Operational user-owned tables exposed in admin screens/reports.
+do $$
+declare
+  policy_row record;
+begin
+  for policy_row in
+    select * from (values
+      ('trips','trips:read','trips:write'),
+      ('bookings','bookings:read','bookings:write'),
+      ('budgets','reports:read','reports:read'),
+      ('budget_expenses','reports:read','reports:read'),
+      ('saved_trips','trips:read','trips:write'),
+      ('ai_chat_sessions','ai:read','ai:write'),
+      ('ai_chat_messages','ai:read','ai:write'),
+      ('trip_itineraries','trips:read','trips:write'),
+      ('itinerary_items','trips:read','trips:write'),
+      ('trip_bookings','bookings:read','bookings:write'),
+      ('travel_checklists','trips:read','trips:write'),
+      ('travel_documents','trips:read','trips:write'),
+      ('trip_notifications','notifications:read','notifications:write'),
+      ('saved_locations','trips:read','trips:write'),
+      ('destination_recommendations','ai:read','ai:write'),
+      ('saved_places','content:read','content:write')
+    ) as policies(table_name, read_permission, write_permission)
+  loop
+    execute format('drop policy if exists "Admins can read %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can read %1$s" on public.%1$I for select to authenticated using (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.read_permission);
+    execute format('drop policy if exists "Admins can create %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can create %1$s" on public.%1$I for insert to authenticated with check (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.write_permission);
+    execute format('drop policy if exists "Admins can update %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can update %1$s" on public.%1$I for update to authenticated using (public.has_admin_permission(%2$L)) with check (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.write_permission);
+    execute format('drop policy if exists "Admins can delete %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can delete %1$s" on public.%1$I for delete to authenticated using (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.write_permission);
+  end loop;
+end;
+$$;
+
+drop policy if exists "Admins can read admin_audit_logs" on public.admin_audit_logs;
+create policy "Admins can read admin_audit_logs"
+on public.admin_audit_logs for select
+to authenticated
+using (public.has_admin_permission('audit:read'));
+
+drop policy if exists "Admins can create admin_audit_logs" on public.admin_audit_logs;
+create policy "Admins can create admin_audit_logs"
+on public.admin_audit_logs for insert
+to authenticated
+with check (public.is_admin_role());
+
+drop policy if exists "Admins can update admin_audit_logs" on public.admin_audit_logs;
+create policy "Admins can update admin_audit_logs"
+on public.admin_audit_logs for update
+to authenticated
+using (public.has_admin_permission('audit:read'))
+with check (public.has_admin_permission('audit:read'));
+
+drop policy if exists "Admins can delete admin_audit_logs" on public.admin_audit_logs;
+create policy "Admins can delete admin_audit_logs"
+on public.admin_audit_logs for delete
+to authenticated
+using (public.has_admin_permission('audit:read'));
+
+-- Keep content/settings/notifications/AI/reviews permission-specific even if older broad admin policies exist above.
+do $$
+declare
+  policy_row record;
+begin
+  for policy_row in
+    select * from (values
+      ('admin_settings','settings:read','settings:write'),
+      ('admin_notifications','notifications:read','notifications:write'),
+      ('content_items','content:read','content:write'),
+      ('reviews','reviews:read','reviews:write'),
+      ('support_tickets','support:read','support:write'),
+      ('support_ticket_messages','support:read','support:write'),
+      ('ai_usage_logs','ai:read','ai:write')
+    ) as policies(table_name, read_permission, write_permission)
+  loop
+    execute format('drop policy if exists "Admins can read %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can read %1$s" on public.%1$I for select to authenticated using (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.read_permission);
+    execute format('drop policy if exists "Admins can create %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can create %1$s" on public.%1$I for insert to authenticated with check (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.write_permission);
+    execute format('drop policy if exists "Admins can update %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can update %1$s" on public.%1$I for update to authenticated using (public.has_admin_permission(%2$L)) with check (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.write_permission);
+    execute format('drop policy if exists "Admins can delete %1$s" on public.%1$I', policy_row.table_name);
+    execute format('create policy "Admins can delete %1$s" on public.%1$I for delete to authenticated using (public.has_admin_permission(%2$L))', policy_row.table_name, policy_row.write_permission);
+  end loop;
+end;
+$$;

@@ -92,15 +92,6 @@ export const ADMIN_TABS = [
   { key: 'bookings', label: 'Bookings', permission: ADMIN_PERMISSIONS.BOOKINGS_READ },
   { key: 'ai', label: 'AI Usage', permission: ADMIN_PERMISSIONS.AI_READ },
   { key: 'content', label: 'Content', permission: ADMIN_PERMISSIONS.CONTENT_READ },
-  { key: 'reports', label: 'Reports', permission: ADMIN_PERMISSIONS.REPORTS_READ },
-  {
-    key: 'notifications',
-    label: 'Notifications',
-    permission: ADMIN_PERMISSIONS.NOTIFICATIONS_READ,
-  },
-  { key: 'support', label: 'Support', permission: ADMIN_PERMISSIONS.SUPPORT_READ },
-  { key: 'reviews', label: 'Reviews', permission: ADMIN_PERMISSIONS.REVIEWS_READ },
-  { key: 'settings', label: 'Settings', permission: ADMIN_PERMISSIONS.SETTINGS_READ },
   { key: 'audit', label: 'Audit Logs', permission: ADMIN_PERMISSIONS.AUDIT_READ },
 ];
 

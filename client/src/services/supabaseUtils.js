@@ -66,11 +66,12 @@ export function mapProfile(row, authUser) {
 
   return {
     id: row?.id || authUser?.id,
-    email: authUser?.email || row?.email || '',
+    email: row?.email || authUser?.email || '',
     name: row?.name || authUser?.user_metadata?.name || '',
     role: row?.role || 'user',
     status: row?.status || 'active',
     permissions: row?.permissions || {},
+    avatarUrl: row?.avatar_url || authUser?.user_metadata?.avatar_url || '',
     suspendedAt: row?.suspended_at,
     suspensionReason: row?.suspension_reason || '',
     travelPreferences: row?.travel_preferences || {},

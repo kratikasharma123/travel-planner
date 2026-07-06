@@ -10,6 +10,16 @@ function getErrorMessage(apiError, fallback) {
   return apiError?.response?.data?.message || apiError?.message || fallback;
 }
 
+function getTripDurationDays(trip = {}) {
+  if (trip.durationDays) return trip.durationDays;
+  if (!trip.startDate || !trip.endDate) return 3;
+
+  const start = new Date(trip.startDate);
+  const end = new Date(trip.endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 3;
+  return Math.round((end - start) / 86400000) + 1;
+}
+
 export function useTripManagement() {
   const [itineraries, setItineraries] = useState([]);
   const [itineraryItems, setItineraryItems] = useState([]);
@@ -61,10 +71,11 @@ export function useTripManagement() {
     try {
       const generated = await generateItinerary({
         trip,
-        days: trip?.durationDays || 3,
+        days: options.days || getTripDurationDays(trip),
         interests: options.interests || trip?.interests || [],
         draft: options.draft || {},
         weather: options.weather || null,
+        action: options.action || '',
       });
       const data = await tripManagementService.createItinerary({ tripId: trip._id, title: generated.title, source: 'ai', status: 'saved' });
       const itemData = await tripManagementService.createItineraryItems(data.itinerary, generated.items);
@@ -90,6 +101,36 @@ export function useTripManagement() {
     return created;
   }, []);
 
+  const toggleChecklistItem = useCallback(async (item) => {
+    if (!item?._id) return null;
+    const nextValue = !item.isComplete;
+    setChecklists((current) =>
+      current.map((checklistItem) =>
+        checklistItem._id === item._id ? { ...checklistItem, isComplete: nextValue } : checklistItem
+      )
+    );
+    try {
+      const data = await tripManagementService.checklistsCrud.update(item._id, {
+        isComplete: nextValue,
+        title: item.title,
+        category: item.category,
+        sortOrder: item.sortOrder,
+      });
+      setChecklists((current) =>
+        current.map((checklistItem) => (checklistItem._id === item._id ? data.record : checklistItem))
+      );
+      return data.record;
+    } catch (apiError) {
+      setChecklists((current) =>
+        current.map((checklistItem) =>
+          checklistItem._id === item._id ? { ...checklistItem, isComplete: item.isComplete } : checklistItem
+        )
+      );
+      setError(getErrorMessage(apiError, 'Unable to update checklist item.'));
+      throw apiError;
+    }
+  }, []);
+
   return {
     itineraries,
     itineraryItems,
@@ -104,6 +145,7 @@ export function useTripManagement() {
     refreshTripManagement,
     createGeneratedItinerary,
     seedPackingChecklist,
+    toggleChecklistItem,
     setItineraryItems,
     setRecommendations,
     bookingsCrud: tripManagementService.bookingsCrud,

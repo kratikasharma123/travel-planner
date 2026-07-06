@@ -34,7 +34,15 @@ export function dayRows(records = [], dateKey = 'created_at', valueKey = 'count'
 
 export function getBookingValue(booking = {}) {
   const details = booking.details || {};
-  return Number(details.amount || details.price || details.total || details.value || 0);
+  return Number(booking.price || details.amount || details.price || details.total || details.value || 0);
+}
+
+export function getBudgetValue(budget = {}) {
+  return Number(budget.total_budget || budget.total_estimate || budget.totalBudget || budget.totalEstimate || 0);
+}
+
+export function getExpenseValue(expense = {}) {
+  return Number(expense.amount || 0);
 }
 
 export function sumBy(records = [], getValue) {
@@ -45,25 +53,34 @@ export function buildAdminMetrics({
   users = [],
   trips = [],
   bookings = [],
+  budgets = [],
+  expenses = [],
   aiLogs = [],
-  tickets = [],
   reviews = [],
   notifications = [],
+  destinations = [],
 }) {
   const bookingRevenue = sumBy(bookings, getBookingValue);
+  const budgetValue = sumBy(budgets, getBudgetValue);
+  const expenseValue = sumBy(expenses, getExpenseValue);
+
   return {
     totalUsers: users.length,
     activeUsers: users.filter((user) => (user.status || 'active') === 'active').length,
     totalTrips: trips.length,
     bookings: bookings.length,
-    revenue: bookingRevenue,
+    destinations: destinations.length,
+    revenue: bookingRevenue || budgetValue || expenseValue,
+    bookingRevenue,
+    budgetValue,
+    expenseValue,
     aiRequests: aiLogs.length,
     pendingReviews: reviews.filter(
       (review) => review.status === 'pending' || review.status === 'reported'
     ).length,
-    supportTickets: tickets.filter((ticket) => !['closed', 'resolved'].includes(ticket.status))
-      .length,
-    reports: 6,
+    reports: [users, trips, bookings, budgets, expenses, aiLogs, reviews, notifications, destinations].filter(
+      (records) => records.length > 0
+    ).length,
     notifications: notifications.length,
     failedAiRequests: aiLogs.filter((log) => log.status === 'failed').length,
     averageAiLatency: aiLogs.length

@@ -146,7 +146,7 @@ a {
   }
 
   .btn-secondary {
-    @apply rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70;
+    @apply rounded-full border border-orange-100 px-5 py-2.5 text-sm font-semibold text-orange-600 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-70;
   }
 
   .btn-danger {
@@ -315,6 +315,96 @@ a {
   .dashboard-dark .shadow-orange-100\/40,
   .dashboard-dark .shadow-orange-100\/70,
   .dashboard-dark .shadow-soft {
+    --tw-shadow-color: rgb(0 0 0 / 0.35) !important;
+    --tw-shadow: var(--tw-shadow-colored) !important;
+  }
+
+  .admin-dark .bg-white,
+  .admin-dark .bg-white\/60,
+  .admin-dark .bg-white\/70,
+  .admin-dark .bg-white\/80 {
+    background-color: rgb(15 23 42 / 0.94) !important;
+  }
+
+  .admin-dark .bg-\[\#F8F7F4\],
+  .admin-dark .bg-slate-50,
+  .admin-dark .bg-orange-50,
+  .admin-dark .bg-orange-50\/30,
+  .admin-dark .bg-orange-50\/40,
+  .admin-dark .bg-orange-50\/80,
+  .admin-dark .bg-amber-50,
+  .admin-dark .bg-emerald-50,
+  .admin-dark .bg-teal-50,
+  .admin-dark .bg-stone-100,
+  .admin-dark .from-white,
+  .admin-dark .via-white,
+  .admin-dark .to-orange-50 {
+    background-color: rgb(30 41 59 / 0.9) !important;
+    --tw-gradient-from: rgb(15 23 42 / 0.96) var(--tw-gradient-from-position) !important;
+    --tw-gradient-via: rgb(30 41 59 / 0.9) var(--tw-gradient-via-position) !important;
+    --tw-gradient-to: rgb(67 20 7 / 0.72) var(--tw-gradient-to-position) !important;
+  }
+
+  .admin-dark .text-stone-950,
+  .admin-dark .text-stone-900,
+  .admin-dark .text-stone-800,
+  .admin-dark .text-stone-700,
+  .admin-dark .text-slate-950,
+  .admin-dark .text-slate-800,
+  .admin-dark .text-slate-700 {
+    color: rgb(248 250 252) !important;
+  }
+
+  .admin-dark .text-stone-600,
+  .admin-dark .text-stone-500,
+  .admin-dark .text-stone-400,
+  .admin-dark .text-slate-600,
+  .admin-dark .text-slate-500,
+  .admin-dark .text-slate-400 {
+    color: rgb(203 213 225) !important;
+  }
+
+  .admin-dark .border-orange-100,
+  .admin-dark .border-orange-100\/70,
+  .admin-dark .border-orange-100\/80,
+  .admin-dark .border-slate-200,
+  .admin-dark .ring-orange-100,
+  .admin-dark .ring-slate-200 {
+    border-color: rgb(251 146 60 / 0.22) !important;
+    --tw-ring-color: rgb(251 146 60 / 0.18) !important;
+  }
+
+  .admin-dark input,
+  .admin-dark select,
+  .admin-dark textarea,
+  .admin-dark .form-control {
+    background-color: rgb(15 23 42 / 0.92) !important;
+    border-color: rgb(251 146 60 / 0.22) !important;
+    color: rgb(248 250 252) !important;
+  }
+
+  .admin-dark input::placeholder,
+  .admin-dark textarea::placeholder {
+    color: rgb(148 163 184) !important;
+  }
+
+  .admin-dark table,
+  .admin-dark thead,
+  .admin-dark tbody,
+  .admin-dark tr,
+  .admin-dark td,
+  .admin-dark th {
+    background-color: rgb(15 23 42 / 0.72) !important;
+    color: rgb(226 232 240) !important;
+    border-color: rgb(255 255 255 / 0.1) !important;
+  }
+
+  .admin-dark .shadow-orange-100,
+  .admin-dark .shadow-orange-100\/40,
+  .admin-dark .shadow-orange-100\/50,
+  .admin-dark .shadow-orange-100\/60,
+  .admin-dark .shadow-orange-100\/70,
+  .admin-dark .shadow-soft {
     --tw-shadow-color: rgb(0 0 0 / 0.35) !important;
     --tw-shadow: var(--tw-shadow-colored) !important;
   }

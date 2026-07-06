@@ -19,12 +19,9 @@ import {
   Bot,
   CalendarCheck,
   Compass,
-  Download,
   MapPin,
   Plane,
   PlusCircle,
-  ReceiptText,
-  Star,
   TicketCheck,
   TrendingUp,
   Users,
@@ -86,7 +83,6 @@ const fallbackTopDestinations = [
     destination: 'Goa, India',
     category: 'Beach',
     tripsGenerated: 128,
-    savedCount: 84,
     averageBudget: 42000,
     status: 'active',
   },
@@ -95,7 +91,6 @@ const fallbackTopDestinations = [
     destination: 'Manali, India',
     category: 'Mountain',
     tripsGenerated: 96,
-    savedCount: 63,
     averageBudget: 36000,
     status: 'active',
   },
@@ -104,7 +99,6 @@ const fallbackTopDestinations = [
     destination: 'Jaipur, India',
     category: 'Culture',
     tripsGenerated: 82,
-    savedCount: 57,
     averageBudget: 31000,
     status: 'active',
   },
@@ -113,7 +107,6 @@ const fallbackTopDestinations = [
     destination: 'Bali, Indonesia',
     category: 'International',
     tripsGenerated: 74,
-    savedCount: 49,
     averageBudget: 89000,
     status: 'scheduled',
   },
@@ -486,7 +479,6 @@ function OverviewSection({
         destination: destination.destination,
         category: trips[index]?.category || trips[index]?.trip_type || ['Beach', 'Mountain', 'Culture', 'Adventure'][index % 4],
         tripsGenerated: destination.trips,
-        savedCount: Math.max(1, Math.round(destination.trips * 0.62)),
         averageBudget: trips[index]?.budget || 35000 + index * 6500,
         status: trips[index]?.status || 'active',
       }));
@@ -574,13 +566,6 @@ function OverviewSection({
       time: '12m ago',
     },
     {
-      id: 'destination-saved',
-      icon: Star,
-      title: 'Destination saved',
-      description: `${topDestinations[0]?.destination || 'Goa'} was saved by a traveler for later planning.`,
-      time: '28m ago',
-    },
-    {
       id: 'booking-created',
       icon: CalendarCheck,
       title: 'Booking created',
@@ -609,7 +594,7 @@ function OverviewSection({
       icon: Plane,
       title: 'Manage Trips',
       count: formatCompact(metrics.totalTrips || trips.length || 246),
-      description: 'Monitor AI-generated and saved travel plans.',
+      description: 'Monitor AI-generated and active travel plans.',
       to: '/admin/trips',
       accent: 'amber',
     },
@@ -628,14 +613,6 @@ function OverviewSection({
       description: 'Track flights, hotels, activities, and transport.',
       to: '/admin/bookings',
       accent: 'emerald',
-    },
-    {
-      icon: ReceiptText,
-      title: 'Manage Budgets',
-      count: currencyFormat(estimatedRevenue || 1845000),
-      description: 'Review estimated values, exports, and budget reports.',
-      to: '/admin/budgets',
-      accent: 'stone',
     },
     {
       icon: Bot,
@@ -669,17 +646,13 @@ function OverviewSection({
 
           <div className="space-y-5">
             <div className="flex flex-wrap gap-3 lg:justify-end">
-              <Link to="/admin/destinations" className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-white shadow-xl shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-orange-600">
+              <Link to="/admin/destinations?create=1" className="inline-flex items-center gap-2 rounded-2xl bg-orange-500 px-4 py-3 text-sm font-black text-white shadow-xl shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-orange-600">
                 <PlusCircle className="h-4 w-4" />
                 Add Destination
               </Link>
               <Link to="/admin/users" className="inline-flex items-center gap-2 rounded-2xl bg-white/80 px-4 py-3 text-sm font-black text-stone-800 ring-1 ring-orange-100 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white">
                 <Users className="h-4 w-4" />
                 View Users
-              </Link>
-              <Link to="/admin/reports" className="inline-flex items-center gap-2 rounded-2xl bg-stone-950 px-4 py-3 text-sm font-black text-white shadow-xl shadow-stone-200 transition hover:-translate-y-0.5 hover:bg-teal-700">
-                <Download className="h-4 w-4" />
-                Export Report
               </Link>
             </div>
 
@@ -738,7 +711,7 @@ function OverviewSection({
 
       <WarmTable
         title="Top destinations"
-        description="Destination performance based on generated trips, saves, and estimated budgets."
+        description="Destination performance based on generated trips and estimated budgets."
         rows={topDestinations}
         columns={[
           {
@@ -755,7 +728,6 @@ function OverviewSection({
           },
           { key: 'category', label: 'Category' },
           { key: 'tripsGenerated', label: 'Trips Generated' },
-          { key: 'savedCount', label: 'Saved Count' },
           {
             key: 'averageBudget',
             label: 'Average Budget',

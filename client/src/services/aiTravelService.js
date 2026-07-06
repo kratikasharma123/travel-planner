@@ -1,66 +1,70 @@
+import { listDestinations } from './destinationService.js';
 import { supabase } from './supabaseClient.js';
+import { createServiceError } from './supabaseUtils.js';
 
 const timeBlocks = ['morning', 'afternoon', 'evening', 'night'];
-
-const destinationSeeds = [
-  {
-    destinationName: 'Bali',
-    country: 'Indonesia',
-    city: 'Ubud',
-    estimatedBudget: 1200,
-    bestTimeToVisit: 'April to October',
-    rating: 4.8,
-    imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=900&q=90',
-    popularAttractions: ['Ubud Rice Terraces', 'Uluwatu Temple', 'Seminyak Beach'],
-    travelTips: ['Book scooters carefully', 'Carry light rainwear', 'Respect temple dress codes'],
-  },
-  {
-    destinationName: 'Kyoto',
-    country: 'Japan',
-    city: 'Kyoto',
-    estimatedBudget: 1800,
-    bestTimeToVisit: 'March to May, October to November',
-    rating: 4.9,
-    imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=90',
-    popularAttractions: ['Fushimi Inari', 'Arashiyama Bamboo Grove', 'Kiyomizu-dera'],
-    travelTips: ['Use public transport passes', 'Reserve popular restaurants', 'Start sightseeing early'],
-  },
-  {
-    destinationName: 'Goa',
-    country: 'India',
-    city: 'Panaji',
-    estimatedBudget: 650,
-    bestTimeToVisit: 'November to February',
-    rating: 4.6,
-    imageUrl: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=900&q=90',
-    popularAttractions: ['Baga Beach', 'Old Goa', 'Fort Aguada'],
-    travelTips: ['Compare cab fares', 'Keep beach days flexible', 'Try local seafood'],
-  },
-];
 
 function tripName(trip) {
   return trip?.title || trip?.customDestination?.name || trip?.city || 'your trip';
 }
 
-export async function sendTravelMessage({ message, trip, history = [] }) {
-  const lower = message.toLowerCase();
-  const name = tripName(trip);
-  const topics = [];
-  if (lower.includes('hotel')) topics.push('compare hotels near your daily activity clusters and prefer free cancellation.');
-  if (lower.includes('food') || lower.includes('restaurant')) topics.push('try local food markets for breakfast and reserve one highly rated dinner.');
-  if (lower.includes('budget') || lower.includes('cost')) topics.push('keep 15% of your budget as buffer and track transport + meals daily.');
-  if (lower.includes('pack')) topics.push('pack documents, weather-appropriate layers, medicines, chargers, and a compact day bag.');
-  if (lower.includes('safe') || lower.includes('safety')) topics.push('save emergency contacts, avoid isolated areas late at night, and keep digital document copies.');
+function normalizeStringArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+}
 
-  const response = topics.length
-    ? `For ${name}, I recommend you ${topics.join(' Also, ')} I can turn this into a checklist or itinerary if you want.`
-    : `For ${name}, I can help with destinations, itinerary, hotels, restaurants, attractions, transport, packing, budget, weather, and safety. A good next step is to share your dates, budget, interests, and traveler count.`;
+async function getFunctionErrorMessage(error) {
+  try {
+    const payload = await error?.context?.json?.();
+    return payload?.message || payload?.error || error?.message;
+  } catch {
+    return error?.message;
+  }
+}
+
+export async function sendTravelMessage({ message, trip, history = [] }) {
+  const { data, error } = await supabase.functions.invoke('generate-ai-chat', {
+    body: {
+      message,
+      trip,
+      history: history.slice(-12).map((item) => ({ role: item.role, content: item.content })),
+    },
+  });
+
+  if (error) {
+    const errorMessage = await getFunctionErrorMessage(error);
+    throw createServiceError(
+      { message: errorMessage || 'AI chat is not configured yet.', code: error.code, status: error.status },
+      'AI chat is not configured yet.'
+    );
+  }
+
+  if (!data?.content) {
+    throw createServiceError(
+      { message: 'AI chat returned an empty response.', code: 'EMPTY_AI_CHAT' },
+      'AI chat returned an empty response.'
+    );
+  }
 
   return {
     role: 'assistant',
-    content: response,
-    metadata: { generatedBy: 'mock-ready-ai', historyLength: history.length },
+    content: data.content,
+    metadata: data.metadata || { generatedBy: data.model || 'ai' },
   };
+}
+
+function getDurationFromDates(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  return Math.round((end - start) / 86400000) + 1;
+}
+
+function safeGeneratedDays(days, trip = {}) {
+  const requestedDays = days || trip.durationDays || getDurationFromDates(trip.startDate, trip.endDate) || 3;
+  const numberValue = Number(requestedDays);
+  if (!Number.isFinite(numberValue)) return 3;
+  return Math.min(Math.max(Math.round(numberValue), 1), 14);
 }
 
 function normalizeGeneratedItem(item = {}, index = 0) {
@@ -73,41 +77,71 @@ function normalizeGeneratedItem(item = {}, index = 0) {
     category: item.category || 'activity',
     estimatedCost: Number(item.estimatedCost || 0),
     sortOrder: Number(item.sortOrder ?? index % timeBlocks.length),
-    metadata: item.metadata || { generatedBy: 'claude-opus-4-8' },
+    metadata: item.metadata || { generatedBy: 'gemini' },
   };
 }
 
-export async function generateItinerary({ trip, days = 3, interests = [], draft = {}, weather = null }) {
+export async function generateItinerary({ trip, days = 3, interests = [], draft = {}, weather = null, action = '' }) {
+  const safeDays = safeGeneratedDays(days, trip);
   const { data, error } = await supabase.functions.invoke('generate-ai-trip', {
     body: {
       trip,
       draft,
       weather,
-      days,
-      preferences: { interests },
+      days: safeDays,
+      action,
+      preferences: { interests: normalizeStringArray(interests) },
     },
   });
 
-  if (error) throw error;
-  if (!data?.items?.length) throw new Error('AI did not return itinerary items.');
+  if (error) {
+    const message = await getFunctionErrorMessage(error);
+    throw createServiceError({ message: message || 'Unable to generate AI itinerary.', code: error.code, status: error.status }, 'Unable to generate AI itinerary.');
+  }
+
+  if (!data?.items?.length) {
+    throw createServiceError({ message: data?.message || 'AI did not return itinerary items.', code: 'EMPTY_AI_ITINERARY' }, 'AI did not return itinerary items.');
+  }
 
   return {
     title: data.title || `${tripName(trip)} AI Itinerary`,
     summary: data.summary || '',
     estimatedBudget: data.estimatedBudget || '',
-    tips: data.tips || [],
-    packingChecklist: data.packingChecklist || [],
-    budgetNotes: data.budgetNotes || [],
+    tips: normalizeStringArray(data.tips),
+    packingChecklist: normalizeStringArray(data.packingChecklist),
+    budgetNotes: normalizeStringArray(data.budgetNotes),
     usage: data.usage || null,
     items: data.items.map(normalizeGeneratedItem),
   };
 }
 
-export function generateDestinationRecommendations(filters = {}) {
+function destinationToRecommendation(destination = {}, filters = {}) {
+  const estimatedBudget = Number(destination.costLevel === 'luxury' ? 2200 : destination.costLevel === 'budget' ? 700 : 1300);
+  return {
+    destinationName: destination.name,
+    country: destination.country || '',
+    city: destination.region || destination.name,
+    estimatedBudget,
+    bestTimeToVisit: destination.bestTimeToVisit || '',
+    rating: Number(destination.rating || 4.7),
+    imageUrl: destination.imageUrl || '',
+    popularAttractions: destination.popularAttractions || [],
+    travelTips: [destination.safetyNotes, destination.familySuitabilityNotes].filter(Boolean).slice(0, 3),
+    metadata: {
+      matchedInterests: filters.interests || [],
+      season: filters.season || destination.bestTimeToVisit || '',
+      source: 'destinations',
+    },
+  };
+}
+
+export async function generateDestinationRecommendations(filters = {}) {
   const budget = Number(filters.budget || 0);
-  return destinationSeeds
+  const { destinations } = await listDestinations({ limit: 100 });
+  return destinations
+    .map((destination) => destinationToRecommendation(destination, filters))
     .filter((item) => !budget || item.estimatedBudget <= budget * 1.25)
-    .map((item) => ({ ...item, metadata: { matchedInterests: filters.interests || [], season: filters.season || item.bestTimeToVisit } }));
+    .slice(0, 6);
 }
 
 export function generatePackingList(trip) {

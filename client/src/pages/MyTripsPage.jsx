@@ -13,7 +13,6 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { useSavedTrips } from '../hooks/useSavedTrips.js';
 import { useTrips } from '../hooks/useTrips.js';
 import { currencyFormat } from '../utils/budgetCalculations.js';
 
@@ -21,8 +20,6 @@ const initialForm = {
   title: '',
   destinationName: '',
   destinationCountry: '',
-  city: '',
-  country: '',
   budget: '',
   startDate: '',
   endDate: '',
@@ -36,13 +33,6 @@ const initialForm = {
 
 const initialFilters = {
   status: '',
-};
-
-const initialSavedEditForm = {
-  savedTitle: '',
-  folder: '',
-  tags: '',
-  notes: '',
 };
 
 const tripTabs = ['All', 'Upcoming', 'Planned', 'Completed'];
@@ -59,8 +49,6 @@ function tripToForm(trip) {
     title: trip.title || '',
     destinationName: trip.customDestination?.name || trip.destination?.name || '',
     destinationCountry: trip.customDestination?.country || trip.destination?.country || trip.country || '',
-    city: trip.city || trip.customDestination?.name || '',
-    country: trip.country || trip.customDestination?.country || '',
     budget: trip.budget || '',
     startDate: trip.startDate || '',
     endDate: trip.endDate || '',
@@ -77,11 +65,11 @@ function createTripPayload(formData) {
   return {
     title: formData.title,
     customDestination: {
-      name: formData.destinationName || formData.city,
-      country: formData.destinationCountry || formData.country,
+      name: formData.destinationName,
+      country: formData.destinationCountry,
     },
-    city: formData.city || formData.destinationName,
-    country: formData.country || formData.destinationCountry,
+    city: formData.destinationName,
+    country: formData.destinationCountry,
     budget: Number(formData.budget || 0),
     startDate: formData.startDate || null,
     endDate: formData.endDate || null,
@@ -94,18 +82,6 @@ function createTripPayload(formData) {
       .filter(Boolean),
     notes: formData.notes,
     status: formData.status,
-  };
-}
-
-function createSavedTripPayload(formData) {
-  return {
-    savedTitle: formData.savedTitle,
-    folder: formData.folder,
-    tags: formData.tags
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean),
-    notes: formData.notes,
   };
 }
 
@@ -130,8 +106,6 @@ function getInitialForm(destination) {
     title: `${destinationName || 'New'} trip`,
     destinationName,
     destinationCountry,
-    city: destinationName,
-    country: destinationCountry,
     notes: destination.tag ? `Inspired by ${destination.tag}.` : '',
   };
 }
@@ -151,25 +125,23 @@ function getTripProgress(trip) {
   return 34;
 }
 
+function getDurationFromDates(startDate, endDate) {
+  if (!startDate || !endDate) return '';
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return '';
+  return String(Math.round((end - start) / 86400000) + 1);
+}
+
 function MyTripsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedDestination = location.state?.destination;
   const { trips, isLoading, error, refreshTrips, createTrip, updateTrip, deleteTrip } = useTrips();
-  const {
-    savedTrips,
-    isLoading: savedTripsLoading,
-    error: savedTripsError,
-    refreshSavedTrips,
-    updateSavedTrip,
-    removeSavedTrip,
-  } = useSavedTrips();
   const [formData, setFormData] = useState(() => getInitialForm(selectedDestination));
   const [filters, setFilters] = useState(initialFilters);
   const [activeTab, setActiveTab] = useState('All');
   const [editingTripId, setEditingTripId] = useState(null);
-  const [editingSavedTripId, setEditingSavedTripId] = useState(null);
-  const [savedEditForm, setSavedEditForm] = useState(initialSavedEditForm);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState(() => {
     const destinationName = selectedDestination?.name || selectedDestination?.city;
@@ -187,21 +159,22 @@ function MyTripsPage() {
     return trips;
   }, [activeTab, completedTrips, trips, upcomingTrips]);
   const featuredTrip = upcomingTrips[0] || activeTrips[0] || null;
-  const savedDestinationCount = savedTrips.length + getWishlistCount();
+  const savedDestinationCount = getWishlistCount();
 
   function handleChange(event) {
     const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    setFormData((current) => {
+      const next = { ...current, [name]: value };
+      if (name === 'startDate' || name === 'endDate') {
+        next.durationDays = getDurationFromDates(next.startDate, next.endDate);
+      }
+      return next;
+    });
   }
 
   function handleFilterChange(event) {
     const { name, value } = event.target;
     setFilters((current) => ({ ...current, [name]: value }));
-  }
-
-  function handleSavedEditChange(event) {
-    const { name, value } = event.target;
-    setSavedEditForm((current) => ({ ...current, [name]: value }));
   }
 
   async function handleApplyFilters(event) {
@@ -265,52 +238,6 @@ function MyTripsPage() {
     }
   }
 
-  function handleEditSavedTrip(savedTrip) {
-    setEditingSavedTripId(savedTrip._id);
-    setSavedEditForm({
-      savedTitle: savedTrip.savedTitle || savedTrip.trip?.title || '',
-      folder: savedTrip.folder || '',
-      tags: savedTrip.tags?.join(', ') || '',
-      notes: savedTrip.notes || '',
-    });
-    setFormError('');
-    setSuccess('');
-  }
-
-  function handleCancelSavedEdit() {
-    setEditingSavedTripId(null);
-    setSavedEditForm(initialSavedEditForm);
-  }
-
-  async function handleUpdateSavedTrip(event) {
-    event.preventDefault();
-    if (!editingSavedTripId) return;
-
-    setFormError('');
-    setSuccess('');
-
-    try {
-      await updateSavedTrip(editingSavedTripId, createSavedTripPayload(savedEditForm));
-      setEditingSavedTripId(null);
-      setSavedEditForm(initialSavedEditForm);
-      setSuccess('Saved trip updated successfully.');
-    } catch (apiError) {
-      setFormError(getErrorMessage(apiError, 'Unable to update saved trip.'));
-    }
-  }
-
-  async function handleRemoveSavedTrip(savedTripId) {
-    setFormError('');
-    setSuccess('');
-
-    try {
-      await removeSavedTrip(savedTripId);
-      setSuccess('Saved trip removed successfully.');
-    } catch (apiError) {
-      setFormError(getErrorMessage(apiError, 'Unable to remove saved trip.'));
-    }
-  }
-
   return (
     <section className="relative grid gap-6 overflow-hidden">
       <div className="pointer-events-none absolute -left-24 top-12 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
@@ -332,7 +259,7 @@ function MyTripsPage() {
           </p>
           <h1 className="mt-5 text-4xl font-black tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">Your travel plans</h1>
           <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-white/85 sm:text-lg">Manage saved trips, itineraries, budgets, and AI recommendations.</p>
-          <button type="button" onClick={() => navigate('/planner')} className="mt-7 inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-orange-600">
+          <button type="button" onClick={() => navigate('/planner')} className="mt-7 inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-orange-600">
             <Plus className="h-4 w-4" />
             Plan New Trip
           </button>
@@ -392,19 +319,14 @@ function MyTripsPage() {
           <input name="title" value={formData.title} onChange={handleChange} required minLength={2} className="form-control" placeholder="Trip title" />
           <input name="destinationName" value={formData.destinationName} onChange={handleChange} className="form-control" placeholder="Destination city" />
           <input name="destinationCountry" value={formData.destinationCountry} onChange={handleChange} className="form-control" placeholder="Country" />
-          <input name="city" value={formData.city} onChange={handleChange} className="form-control" placeholder="City" />
-          <input name="country" value={formData.country} onChange={handleChange} className="form-control" placeholder="Country preference" />
           <input type="number" name="budget" min="0" value={formData.budget} onChange={handleChange} className="form-control" placeholder="Trip budget" />
           <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="form-control" />
           <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} className="form-control" />
-          <input type="number" name="durationDays" min="1" max="365" value={formData.durationDays} onChange={handleChange} className="form-control" placeholder="Duration days" />
-          <input type="number" name="travelerCount" min="1" max="50" value={formData.travelerCount} onChange={handleChange} className="form-control" />
-          <input name="travelStyle" value={formData.travelStyle} onChange={handleChange} className="form-control" placeholder="Travel style" />
+          <input type="number" name="durationDays" min="1" max="365" value={formData.durationDays} readOnly className="form-control bg-slate-50" placeholder="Duration days" />
           <select name="status" value={formData.status} onChange={handleChange} className="form-control"><option value="draft">Draft</option><option value="saved">Saved</option><option value="archived">Archived</option></select>
-          <input name="interests" value={formData.interests} onChange={handleChange} className="form-control lg:col-span-2" placeholder="Interests, comma-separated" />
           <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className="form-control lg:col-span-3" placeholder="Trip notes" />
           <div className="flex flex-wrap gap-3 lg:col-span-3">
-            <button type="submit" disabled={isSubmitting} className="btn-primary">{isSubmitting ? 'Saving...' : editingTripId ? 'Update Trip' : 'Create Trip'}</button>
+            <button type="submit" disabled={isSubmitting} className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70">{isSubmitting ? 'Saving...' : editingTripId ? 'Update Trip' : 'Create Trip'}</button>
             {editingTripId && <button type="button" onClick={handleCancelEdit} className="btn-secondary">Cancel edit</button>}
           </div>
         </form>
@@ -419,7 +341,7 @@ function MyTripsPage() {
           </div>
           <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleApplyFilters}>
             <select name="status" value={filters.status} onChange={handleFilterChange} className="form-control"><option value="">All statuses</option><option value="draft">Draft</option><option value="saved">Saved</option><option value="active">Active</option><option value="completed">Completed</option><option value="archived">Archived</option></select>
-            <div className="flex gap-2"><button type="submit" className="btn-primary">Filter</button><button type="button" onClick={handleResetFilters} className="btn-secondary">Reset</button></div>
+            <div className="flex gap-2"><button type="submit" className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600">Filter</button><button type="button" onClick={handleResetFilters} className="btn-secondary">Reset</button></div>
           </form>
         </div>
 
@@ -471,49 +393,6 @@ function MyTripsPage() {
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Saved trips</p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950">Saved trip library</h2>
-            <p className="mt-2 text-slate-600">Organize saved trips with folders, notes, and tags.</p>
-          </div>
-          <button type="button" onClick={() => refreshSavedTrips()} className="btn-secondary">Refresh</button>
-        </div>
-
-        {savedTripsLoading && <p className="mt-4 text-slate-600">Loading saved trips...</p>}
-        {savedTripsError && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{savedTripsError}</p>}
-        {!savedTripsLoading && savedTrips.length === 0 && <p className="mt-4 rounded-2xl bg-orange-50 p-4 text-slate-600">No saved trips yet. Save a trip from the records above.</p>}
-
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {savedTrips.map((savedTrip) => (
-            <article key={savedTrip._id} className="rounded-[1.5rem] border border-orange-100 bg-orange-50/60 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-black text-slate-950">{savedTrip.savedTitle || savedTrip.trip?.title || 'Saved trip'}</h3>
-                  <p className="mt-1 text-sm text-slate-600">{savedTrip.trip?.customDestination?.name || savedTrip.trip?.destination?.name || 'Destination not set'}{savedTrip.folder ? ` • ${savedTrip.folder}` : ''}</p>
-                </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">{savedTrip.savedAt ? new Date(savedTrip.savedAt).toLocaleDateString() : 'Saved'}</span>
-              </div>
-
-              {editingSavedTripId === savedTrip._id ? (
-                <form className="mt-4 grid gap-3" onSubmit={handleUpdateSavedTrip}>
-                  <input name="savedTitle" value={savedEditForm.savedTitle} onChange={handleSavedEditChange} className="form-control" placeholder="Saved title" />
-                  <input name="folder" value={savedEditForm.folder} onChange={handleSavedEditChange} className="form-control" placeholder="Folder" />
-                  <input name="tags" value={savedEditForm.tags} onChange={handleSavedEditChange} className="form-control" placeholder="Tags, comma-separated" />
-                  <textarea name="notes" value={savedEditForm.notes} onChange={handleSavedEditChange} rows="3" className="form-control" placeholder="Saved trip notes" />
-                  <div className="flex flex-wrap gap-2"><button type="submit" className="btn-primary">Save metadata</button><button type="button" onClick={handleCancelSavedEdit} className="btn-secondary">Cancel</button></div>
-                </form>
-              ) : (
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => handleEditSavedTrip(savedTrip)} className="btn-secondary">Edit metadata</button>
-                  <button type="button" onClick={() => handleRemoveSavedTrip(savedTrip._id)} className="btn-danger">Remove</button>
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
     </section>
   );
 }

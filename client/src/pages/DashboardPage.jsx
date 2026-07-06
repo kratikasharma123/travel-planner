@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../hooks/useAuth.js';
 import { useTripDashboard } from '../hooks/useTripDashboard.js';
 import { currencyFormat } from '../utils/budgetCalculations.js';
@@ -48,15 +47,6 @@ const destinationCards = [
   },
 ];
 
-const budgetRows = [
-  { name: 'Flights', value: 28, color: '#FB923C' },
-  { name: 'Hotels', value: 24, color: '#38BDF8' },
-  { name: 'Food', value: 16, color: '#22C55E' },
-  { name: 'Transport', value: 12, color: '#A855F7' },
-  { name: 'Activities', value: 12, color: '#F43F5E' },
-  { name: 'Others', value: 8, color: '#64748B' },
-];
-
 function normalizeWishlist(items = []) {
   return items
     .map((item) => {
@@ -70,29 +60,11 @@ function getStoredFavoriteDestinations() {
   return normalizeWishlist(JSON.parse(window.localStorage.getItem('tripsafar-favorite-destinations') || '[]'));
 }
 
-function BudgetTooltip({ active, payload, totalSpent }) {
-  if (!active || !payload?.length) return null;
-
-  const item = payload[0].payload;
-  const amount = totalSpent ? (totalSpent * item.value) / 100 : 0;
-
-  return (
-    <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm shadow-xl shadow-orange-100/70">
-      <div className="flex items-center gap-2">
-        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-        <p className="font-black text-[#222222]">{item.name}</p>
-      </div>
-      <p className="mt-2 text-lg font-black text-[#FB923C]">{item.value}%</p>
-      <p className="text-xs font-bold text-[#222222]/45">Approx. {currencyFormat(amount)}</p>
-    </div>
-  );
-}
-
 function DashboardPage() {
   const { user } = useAuth();
-  const { trips, summary, analyticsRows, isLoading, error } = useTripDashboard();
+  const { trips, summary, isLoading, error } = useTripDashboard();
   const [favoriteDestinations, setFavoriteDestinations] = useState(getStoredFavoriteDestinations);
-  const budget = { totalBudget: summary.totalBudget || 0, totalCost: summary.totalBudget || 0 };
+  const budget = { totalBudget: summary.totalBudget || 0 };
   const nextTrip = summary.nextTrip;
 
   function toggleFavoriteDestination(destination) {
@@ -152,53 +124,6 @@ function DashboardPage() {
               <p className="mt-2 text-2xl font-black text-[#222222]">{stat.value}</p>
             </article>
           ))}
-        </div>
-
-        <div className="grid gap-5 lg:gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <section className="rounded-[2rem] bg-white p-5 shadow-soft ring-1 ring-black/5 sm:p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#FB923C]">Analytics</p>
-                <h2 className="mt-2 text-2xl font-black text-[#222222]">Monthly trips</h2>
-              </div>
-              <span className="rounded-full bg-[#FFFBF5] px-4 py-2 text-xs font-black text-[#FB923C]">2026</span>
-            </div>
-            <div className="mt-6 h-64 sm:h-72">
-              {analyticsRows.length === 0 ? (
-                <p className="rounded-2xl bg-[#FFFBF5] p-5 text-sm font-semibold text-[#222222]/60">Create trips to populate analytics.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={analyticsRows}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#FFFBF5" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="trips" fill="#FB923C" radius={[10, 10, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-[2rem] bg-white p-5 shadow-soft ring-1 ring-black/5 sm:p-6">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#FB923C]">Budget overview</p>
-            <h2 className="mt-2 text-2xl font-black text-[#222222]">Spending split</h2>
-            <div className="mt-5 h-64 sm:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-                  <Pie data={budgetRows} dataKey="value" innerRadius="52%" outerRadius="82%" paddingAngle={4}>
-                    {budgetRows.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<BudgetTooltip totalSpent={budget.totalCost} />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-5 rounded-2xl bg-[#FFFBF5] p-4 text-sm font-bold text-[#FB923C]">
-              You are on track! You have 66% of your budget remaining.
-            </div>
-          </section>
         </div>
 
         <section className="rounded-[2rem] bg-white p-5 shadow-soft ring-1 ring-black/5 sm:p-6">

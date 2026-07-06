@@ -2,7 +2,7 @@ import { CheckCircle2, Circle, PackageCheck, Shirt, Sparkles } from 'lucide-reac
 
 const categoryChips = ['Documents', 'Clothes', 'Health', 'Tech', 'Weather'];
 
-function ChecklistPanel({ items = [], onSeed }) {
+function ChecklistPanel({ items = [], onSeed, onToggleItem }) {
   const completed = items.filter((item) => item.isComplete).length;
   const percent = items.length ? Math.round((completed / items.length) * 100) : 0;
 
@@ -51,13 +51,20 @@ function ChecklistPanel({ items = [], onSeed }) {
 
           <div className="mt-5 grid gap-3">
             {items.slice(0, 8).map((item) => (
-              <div key={item._id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md">
+              <button
+                key={item._id}
+                type="button"
+                onClick={() => onToggleItem?.(item)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left text-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md focus:outline-none focus:ring-4 focus:ring-orange-100"
+                aria-pressed={item.isComplete}
+                aria-label={`${item.isComplete ? 'Mark unpacked' : 'Mark packed'} ${item.title}`}
+              >
                 <span className={item.isComplete ? 'text-emerald-500' : 'text-slate-300'}>
                   {item.isComplete ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
                 </span>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-orange-600">{item.category}</span>
-                <span className="font-semibold text-slate-700">{item.title}</span>
-              </div>
+                <span className={`font-semibold ${item.isComplete ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{item.title}</span>
+              </button>
             ))}
             {items.length === 0 && (
               <div className="rounded-[1.75rem] border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center">

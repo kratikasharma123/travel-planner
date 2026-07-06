@@ -12,7 +12,7 @@ const ADMIN_TABLES = {
     order: 'created_at',
     read: ADMIN_PERMISSIONS.USERS_READ,
     write: ADMIN_PERMISSIONS.USERS_WRITE,
-    search: ['name', 'role', 'status'],
+    search: ['name', 'email', 'role', 'status'],
   },
   trips: {
     order: 'created_at',
@@ -20,11 +20,29 @@ const ADMIN_TABLES = {
     write: ADMIN_PERMISSIONS.TRIPS_WRITE,
     search: ['title', 'city', 'country', 'status'],
   },
-  trip_bookings: {
+  destinations: {
+    order: 'created_at',
+    read: ADMIN_PERMISSIONS.CONTENT_READ,
+    write: ADMIN_PERMISSIONS.CONTENT_WRITE,
+    search: ['name', 'country', 'region', 'status'],
+  },
+  bookings: {
     order: 'created_at',
     read: ADMIN_PERMISSIONS.BOOKINGS_READ,
     write: ADMIN_PERMISSIONS.BOOKINGS_WRITE,
-    search: ['title', 'provider', 'booking_type', 'reference_number'],
+    search: ['title', 'provider', 'booking_type', 'reference_number', 'location', 'status'],
+  },
+  budgets: {
+    order: 'created_at',
+    read: ADMIN_PERMISSIONS.REPORTS_READ,
+    write: ADMIN_PERMISSIONS.REPORTS_READ,
+    search: ['name', 'category', 'description', 'currency', 'confidence_level'],
+  },
+  budget_expenses: {
+    order: 'created_at',
+    read: ADMIN_PERMISSIONS.REPORTS_READ,
+    write: ADMIN_PERMISSIONS.REPORTS_READ,
+    search: ['title', 'category', 'vendor', 'status', 'notes'],
   },
   ai_usage_logs: {
     order: 'created_at',
@@ -56,6 +74,12 @@ const ADMIN_TABLES = {
     write: ADMIN_PERMISSIONS.NOTIFICATIONS_WRITE,
     search: ['title', 'message', 'channel', 'status'],
   },
+  trip_notifications: {
+    order: 'created_at',
+    read: ADMIN_PERMISSIONS.NOTIFICATIONS_READ,
+    write: ADMIN_PERMISSIONS.NOTIFICATIONS_WRITE,
+    search: ['title', 'message', 'notification_type', 'priority'],
+  },
   admin_audit_logs: {
     order: 'created_at',
     read: ADMIN_PERMISSIONS.AUDIT_READ,
@@ -75,6 +99,21 @@ const ADMIN_TABLES = {
     search: ['category', 'setting_key'],
   },
 };
+
+const UPDATED_AT_TABLES = new Set([
+  'profiles',
+  'trips',
+  'destinations',
+  'bookings',
+  'budgets',
+  'budget_expenses',
+  'support_tickets',
+  'admin_notifications',
+  'content_items',
+  'admin_settings',
+  'reviews',
+  'trip_notifications',
+]);
 
 function getMessage(error, fallback) {
   return error?.message || fallback;
@@ -160,39 +199,53 @@ export async function getAdminDashboardData(options = {}) {
   const [
     users,
     trips,
+    destinations,
     bookings,
+    budgets,
+    expenses,
     aiLogs,
-    tickets,
     reviews,
     notifications,
+    tripNotifications,
     auditLogs,
-    contentItems,
     settings,
+    tickets,
+    contentItems,
   ] = await Promise.all([
     listAdminTable('profiles', { limit }),
     listAdminTable('trips', { limit }),
-    listAdminTable('trip_bookings', { limit }),
+    listAdminTable('destinations', { limit }),
+    listAdminTable('bookings', { limit }),
+    listAdminTable('budgets', { limit }),
+    listAdminTable('budget_expenses', { limit }),
     listAdminTable('ai_usage_logs', { limit }),
-    listAdminTable('support_tickets', { limit }),
     listAdminTable('reviews', { limit }),
     listAdminTable('admin_notifications', { limit }),
+    listAdminTable('trip_notifications', { limit }),
     listAdminTable('admin_audit_logs', { limit }),
-    listAdminTable('content_items', { limit }),
     listAdminTable('admin_settings', { limit }),
+    listAdminTable('support_tickets', { limit }),
+    listAdminTable('content_items', { limit }),
   ]);
 
-  return {
+  const data = {
     users: users.records,
     trips: trips.records,
     bookings: bookings.records,
+    budgets: budgets.records,
+    expenses: expenses.records,
     aiLogs: aiLogs.records,
-    tickets: tickets.records,
     reviews: reviews.records,
     notifications: notifications.records,
+    tripNotifications: tripNotifications.records,
     auditLogs: auditLogs.records,
-    contentItems: contentItems.records,
+    destinations: destinations.records,
     settings: settings.records,
+    tickets: tickets.records,
+    contentItems: contentItems.records,
   };
+
+  return { ...data, reports: getAdminReportsData(data) };
 }
 
 export async function createAuditLog(payload) {
@@ -205,6 +258,154 @@ export async function createAuditLog(payload) {
     metadata: payload.metadata || {},
   });
   if (error) console.warn('Unable to write audit log', error.message);
+}
+
+function sumBy(records = [], getValue) {
+  return records.reduce((total, record) => total + Number(getValue(record) || 0), 0);
+}
+
+function countBy(records = [], key) {
+  return records.reduce((acc, record) => {
+    const value = record?.[key] || 'unknown';
+    acc[value] = (acc[value] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function latestDate(records = []) {
+  return (
+    records
+      .map((record) => record?.updated_at || record?.created_at || record?.scheduled_at || record?.start_at)
+      .filter(Boolean)
+      .sort()
+      .at(-1) || ''
+  );
+}
+
+function valueFromDetails(record = {}) {
+  const details = record.details || {};
+  return Number(
+    record.price ||
+      record.total_budget ||
+      record.total_estimate ||
+      record.amount ||
+      details.total ||
+      details.price ||
+      details.amount ||
+      0
+  );
+}
+
+export function getAdminReportsData({
+  users = [],
+  trips = [],
+  bookings = [],
+  budgets = [],
+  expenses = [],
+  aiLogs = [],
+  reviews = [],
+  notifications = [],
+  tripNotifications = [],
+  destinations = [],
+} = {}) {
+  const activeUsers = users.filter((user) => (user.status || 'active') === 'active').length;
+  const bookingRevenue = sumBy(bookings, valueFromDetails);
+  const budgetTotal = sumBy(budgets, valueFromDetails);
+  const expenseTotal = sumBy(expenses, valueFromDetails);
+  const failedAi = aiLogs.filter((log) => log.status === 'failed').length;
+  const pendingReviews = reviews.filter((review) => ['pending', 'reported'].includes(review.status)).length;
+  const allNotifications = [...notifications, ...tripNotifications];
+
+  return [
+    {
+      id: 'users',
+      report: 'Users',
+      category: 'Access',
+      count: users.length,
+      total_value: activeUsers,
+      status: 'ready',
+      summary: `${users.length} users, ${activeUsers} active`,
+      breakdown: countBy(users, 'role'),
+      updated_at: latestDate(users),
+    },
+    {
+      id: 'trips',
+      report: 'Trips',
+      category: 'Travel',
+      count: trips.length,
+      total_value: sumBy(trips, (trip) => trip.budget),
+      status: 'ready',
+      summary: `${trips.length} trips across ${new Set(trips.map((trip) => trip.country || trip.city).filter(Boolean)).size} destinations`,
+      breakdown: countBy(trips, 'status'),
+      updated_at: latestDate(trips),
+    },
+    {
+      id: 'bookings',
+      report: 'Bookings',
+      category: 'Revenue',
+      count: bookings.length,
+      total_value: bookingRevenue,
+      status: 'ready',
+      summary: `${bookings.length} bookings worth ${bookingRevenue.toFixed(2)}`,
+      breakdown: countBy(bookings, 'status'),
+      updated_at: latestDate(bookings),
+    },
+    {
+      id: 'budgets',
+      report: 'Budgets & expenses',
+      category: 'Finance',
+      count: budgets.length + expenses.length,
+      total_value: budgetTotal || expenseTotal,
+      status: 'ready',
+      summary: `${budgets.length} budgets, ${expenses.length} expenses`,
+      breakdown: { budgets: budgets.length, expenses: expenses.length },
+      updated_at: latestDate([...budgets, ...expenses]),
+    },
+    {
+      id: 'ai',
+      report: 'AI usage',
+      category: 'AI',
+      count: aiLogs.length,
+      total_value: sumBy(aiLogs, (log) => log.token_estimate),
+      status: failedAi ? 'attention' : 'ready',
+      summary: `${aiLogs.length} requests, ${failedAi} failed`,
+      breakdown: countBy(aiLogs, 'status'),
+      updated_at: latestDate(aiLogs),
+    },
+    {
+      id: 'reviews',
+      report: 'Reviews',
+      category: 'Moderation',
+      count: reviews.length,
+      total_value: pendingReviews,
+      status: pendingReviews ? 'attention' : 'ready',
+      summary: `${reviews.length} reviews, ${pendingReviews} pending/reported`,
+      breakdown: countBy(reviews, 'status'),
+      updated_at: latestDate(reviews),
+    },
+    {
+      id: 'notifications',
+      report: 'Notifications',
+      category: 'Messaging',
+      count: allNotifications.length,
+      total_value: allNotifications.filter((item) => item.status === 'sent' || item.is_read).length,
+      status: 'ready',
+      summary: `${notifications.length} admin campaigns, ${tripNotifications.length} trip reminders`,
+      breakdown: countBy(allNotifications, 'status'),
+      updated_at: latestDate(allNotifications),
+    },
+    {
+      id: 'destinations',
+      report: 'Destinations',
+      category: 'Content',
+      count: destinations.length,
+      total_value: destinations.filter((destination) => destination.status === 'active').length,
+      status: 'ready',
+      summary: `${destinations.length} destination records`,
+      breakdown: countBy(destinations, 'cost_level'),
+      updated_at: latestDate(destinations),
+    },
+  ];
 }
 
 export function userPayloadToRow(payload = {}) {
@@ -249,8 +450,52 @@ export async function setUserStatus(userId, status, reason = '') {
   return updateUserProfile(userId, payload);
 }
 
+function tripPayloadToRow(payload = {}) {
+  return {
+    ...(payload.user_id !== undefined ? { user_id: payload.user_id || null } : {}),
+    ...(payload.userId !== undefined ? { user_id: payload.userId || null } : {}),
+    ...(payload.destination_id !== undefined ? { destination_id: payload.destination_id || null } : {}),
+    ...(payload.destinationId !== undefined ? { destination_id: payload.destinationId || null } : {}),
+    ...(payload.custom_destination !== undefined ? { custom_destination: payload.custom_destination || {} } : {}),
+    ...(payload.customDestination !== undefined ? { custom_destination: payload.customDestination || {} } : {}),
+    ...(payload.title !== undefined ? { title: payload.title || 'Untitled trip' } : {}),
+    ...(payload.start_date !== undefined ? { start_date: payload.start_date || null } : {}),
+    ...(payload.startDate !== undefined ? { start_date: payload.startDate || null } : {}),
+    ...(payload.end_date !== undefined ? { end_date: payload.end_date || null } : {}),
+    ...(payload.endDate !== undefined ? { end_date: payload.endDate || null } : {}),
+    ...(payload.duration_days !== undefined
+      ? { duration_days: payload.duration_days ? Number(payload.duration_days) : null }
+      : {}),
+    ...(payload.durationDays !== undefined
+      ? { duration_days: payload.durationDays ? Number(payload.durationDays) : null }
+      : {}),
+    ...(payload.traveler_count !== undefined
+      ? { traveler_count: Number(payload.traveler_count || 1) }
+      : {}),
+    ...(payload.travelerCount !== undefined
+      ? { traveler_count: Number(payload.travelerCount || 1) }
+      : {}),
+    ...(payload.travel_style !== undefined ? { travel_style: payload.travel_style || '' } : {}),
+    ...(payload.travelStyle !== undefined ? { travel_style: payload.travelStyle || '' } : {}),
+    ...(payload.interests !== undefined ? { interests: normalizeTextArray(payload.interests) } : {}),
+    ...(payload.notes !== undefined ? { notes: payload.notes || '' } : {}),
+    ...(payload.city !== undefined ? { city: payload.city || '' } : {}),
+    ...(payload.country !== undefined ? { country: payload.country || '' } : {}),
+    ...(payload.budget !== undefined ? { budget: Number(payload.budget || 0) } : {}),
+    ...(payload.weather_summary !== undefined ? { weather_summary: payload.weather_summary || {} } : {}),
+    ...(payload.weatherSummary !== undefined ? { weather_summary: payload.weatherSummary || {} } : {}),
+    ...(payload.progress !== undefined ? { progress: Number(payload.progress || 0) } : {}),
+    ...(payload.status !== undefined ? { status: payload.status || 'draft' } : {}),
+    ...(payload.is_favorite !== undefined ? { is_favorite: Boolean(payload.is_favorite) } : {}),
+    ...(payload.isFavorite !== undefined ? { is_favorite: Boolean(payload.isFavorite) } : {}),
+  };
+}
+
 function bookingPayloadToRow(payload = {}) {
   return {
+    ...(payload.user_id !== undefined ? { user_id: payload.user_id || null } : {}),
+    ...(payload.trip_id !== undefined ? { trip_id: payload.trip_id || null } : {}),
+    ...(payload.tripId !== undefined ? { trip_id: payload.tripId || null } : {}),
     ...(payload.booking_type !== undefined ? { booking_type: payload.booking_type } : {}),
     ...(payload.bookingType !== undefined ? { booking_type: payload.bookingType } : {}),
     ...(payload.title !== undefined ? { title: payload.title } : {}),
@@ -265,9 +510,14 @@ function bookingPayloadToRow(payload = {}) {
     ...(payload.startAt !== undefined ? { start_at: payload.startAt || null } : {}),
     ...(payload.end_at !== undefined ? { end_at: payload.end_at || null } : {}),
     ...(payload.endAt !== undefined ? { end_at: payload.endAt || null } : {}),
+    ...(payload.location !== undefined ? { location: payload.location || '' } : {}),
+    ...(payload.status !== undefined ? { status: payload.status || 'upcoming' } : {}),
+    ...(payload.price !== undefined ? { price: Number(payload.price || 0) } : {}),
     ...(payload.details !== undefined ? { details: payload.details || {} } : {}),
     ...(payload.document_url !== undefined ? { document_url: payload.document_url || '' } : {}),
     ...(payload.documentUrl !== undefined ? { document_url: payload.documentUrl || '' } : {}),
+    ...(payload.image_url !== undefined ? { image_url: payload.image_url || '' } : {}),
+    ...(payload.imageUrl !== undefined ? { image_url: payload.imageUrl || '' } : {}),
   };
 }
 
@@ -279,6 +529,103 @@ function contentPayloadToRow(payload = {}) {
     ...(payload.body !== undefined ? { body: payload.body || '' } : {}),
     ...(payload.status !== undefined ? { status: payload.status } : {}),
     ...(payload.metadata !== undefined ? { metadata: payload.metadata || {} } : {}),
+  };
+}
+
+function normalizeTextArray(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function destinationPayloadToRow(payload = {}) {
+  return {
+    ...(payload.name !== undefined ? { name: payload.name } : {}),
+    ...(payload.country !== undefined ? { country: payload.country } : {}),
+    ...(payload.region !== undefined ? { region: payload.region || '' } : {}),
+    ...(payload.description !== undefined ? { description: payload.description || '' } : {}),
+    ...(payload.best_time_to_visit !== undefined
+      ? { best_time_to_visit: payload.best_time_to_visit || '' }
+      : {}),
+    ...(payload.bestTimeToVisit !== undefined
+      ? { best_time_to_visit: payload.bestTimeToVisit || '' }
+      : {}),
+    ...(payload.cost_level !== undefined ? { cost_level: payload.cost_level || 'mid-range' } : {}),
+    ...(payload.costLevel !== undefined ? { cost_level: payload.costLevel || 'mid-range' } : {}),
+    ...(payload.tags !== undefined ? { tags: normalizeTextArray(payload.tags) } : {}),
+    ...(payload.popular_attractions !== undefined
+      ? { popular_attractions: normalizeTextArray(payload.popular_attractions) }
+      : {}),
+    ...(payload.popularAttractions !== undefined
+      ? { popular_attractions: normalizeTextArray(payload.popularAttractions) }
+      : {}),
+    ...(payload.safety_notes !== undefined ? { safety_notes: payload.safety_notes || '' } : {}),
+    ...(payload.safetyNotes !== undefined ? { safety_notes: payload.safetyNotes || '' } : {}),
+    ...(payload.family_suitability_notes !== undefined
+      ? { family_suitability_notes: payload.family_suitability_notes || '' }
+      : {}),
+    ...(payload.familySuitabilityNotes !== undefined
+      ? { family_suitability_notes: payload.familySuitabilityNotes || '' }
+      : {}),
+    ...(payload.image_url !== undefined ? { image_url: payload.image_url || '' } : {}),
+    ...(payload.imageUrl !== undefined ? { image_url: payload.imageUrl || '' } : {}),
+    ...(payload.status !== undefined ? { status: payload.status || 'active' } : {}),
+  };
+}
+
+function budgetPayloadToRow(payload = {}) {
+  return {
+    ...(payload.user_id !== undefined ? { user_id: payload.user_id || null } : {}),
+    ...(payload.trip_id !== undefined ? { trip_id: payload.trip_id || null } : {}),
+    ...(payload.tripId !== undefined ? { trip_id: payload.tripId || null } : {}),
+    ...(payload.name !== undefined ? { name: payload.name || 'Trip Budget' } : {}),
+    ...(payload.category !== undefined ? { category: payload.category || 'general' } : {}),
+    ...(payload.description !== undefined ? { description: payload.description || '' } : {}),
+    ...(payload.total_budget !== undefined ? { total_budget: Number(payload.total_budget || 0) } : {}),
+    ...(payload.totalBudget !== undefined ? { total_budget: Number(payload.totalBudget || 0) } : {}),
+    ...(payload.total_estimate !== undefined ? { total_estimate: Number(payload.total_estimate || 0) } : {}),
+    ...(payload.totalEstimate !== undefined ? { total_estimate: Number(payload.totalEstimate || 0) } : {}),
+    ...(payload.currency !== undefined ? { currency: String(payload.currency || 'USD').toUpperCase() } : {}),
+    ...(payload.confidence_level !== undefined ? { confidence_level: payload.confidence_level || 'low' } : {}),
+    ...(payload.confidenceLevel !== undefined ? { confidence_level: payload.confidenceLevel || 'low' } : {}),
+    ...(payload.notes !== undefined ? { notes: payload.notes || '' } : {}),
+    ...(payload.categories !== undefined ? { categories: payload.categories || {} } : {}),
+  };
+}
+
+function expensePayloadToRow(payload = {}) {
+  return {
+    ...(payload.user_id !== undefined ? { user_id: payload.user_id || null } : {}),
+    ...(payload.budget_id !== undefined ? { budget_id: payload.budget_id || null } : {}),
+    ...(payload.budgetId !== undefined ? { budget_id: payload.budgetId || null } : {}),
+    ...(payload.trip_id !== undefined ? { trip_id: payload.trip_id || null } : {}),
+    ...(payload.tripId !== undefined ? { trip_id: payload.tripId || null } : {}),
+    ...(payload.title !== undefined ? { title: payload.title || '' } : {}),
+    ...(payload.category !== undefined ? { category: payload.category || 'miscellaneous' } : {}),
+    ...(payload.amount !== undefined ? { amount: Number(payload.amount || 0) } : {}),
+    ...(payload.expense_date !== undefined ? { expense_date: payload.expense_date || null } : {}),
+    ...(payload.expenseDate !== undefined ? { expense_date: payload.expenseDate || null } : {}),
+    ...(payload.vendor !== undefined ? { vendor: payload.vendor || '' } : {}),
+    ...(payload.notes !== undefined ? { notes: payload.notes || '' } : {}),
+    ...(payload.status !== undefined ? { status: payload.status || 'estimated' } : {}),
+  };
+}
+
+function reviewPayloadToRow(payload = {}) {
+  return {
+    ...(payload.user_id !== undefined ? { user_id: payload.user_id || null } : {}),
+    ...(payload.userId !== undefined ? { user_id: payload.userId || null } : {}),
+    ...(payload.trip_id !== undefined ? { trip_id: payload.trip_id || null } : {}),
+    ...(payload.tripId !== undefined ? { trip_id: payload.tripId || null } : {}),
+    ...(payload.destination_id !== undefined ? { destination_id: payload.destination_id || null } : {}),
+    ...(payload.destinationId !== undefined ? { destination_id: payload.destinationId || null } : {}),
+    ...(payload.status !== undefined ? { status: payload.status || 'pending' } : {}),
+    ...(payload.moderation_notes !== undefined ? { moderation_notes: payload.moderation_notes || '' } : {}),
+    ...(payload.moderationNotes !== undefined ? { moderation_notes: payload.moderationNotes || '' } : {}),
+    ...(payload.rating !== undefined ? { rating: Number(payload.rating || 5) } : {}),
+    ...(payload.comment !== undefined ? { comment: payload.comment || '' } : {}),
   };
 }
 
@@ -304,7 +651,12 @@ function settingsPayloadToRow(payload = {}) {
 
 function tablePayloadToRow(table, payload) {
   if (table === 'profiles') return userPayloadToRow(payload);
-  if (table === 'trip_bookings') return bookingPayloadToRow(payload);
+  if (table === 'trips') return tripPayloadToRow(payload);
+  if (table === 'bookings') return bookingPayloadToRow(payload);
+  if (table === 'budgets') return budgetPayloadToRow(payload);
+  if (table === 'budget_expenses') return expensePayloadToRow(payload);
+  if (table === 'destinations') return destinationPayloadToRow(payload);
+  if (table === 'reviews') return reviewPayloadToRow(payload);
   if (table === 'content_items') return contentPayloadToRow(payload);
   if (table === 'admin_notifications') return notificationPayloadToRow(payload);
   if (table === 'admin_settings') return settingsPayloadToRow(payload);
@@ -313,7 +665,6 @@ function tablePayloadToRow(table, payload) {
 
 export async function createAdminRecord(table, payload) {
   const config = tableConfig(table);
-  await requireAdminUser(config.write);
   const admin = await requireAdminUser(config.write);
   const baseRow = tablePayloadToRow(table, payload);
   const row =
@@ -336,7 +687,8 @@ export async function createAdminRecord(table, payload) {
 export async function updateAdminRecord(table, id, payload) {
   const config = tableConfig(table);
   await requireAdminUser(config.write);
-  const row = { ...tablePayloadToRow(table, payload), updated_at: new Date().toISOString() };
+  const row = { ...tablePayloadToRow(table, payload) };
+  if (UPDATED_AT_TABLES.has(table)) row.updated_at = new Date().toISOString();
   const { data, error } = await supabase.from(table).update(row).eq('id', id).select('*').single();
   throwIfError(error, `Unable to update ${table}.`);
   await createAuditLog({

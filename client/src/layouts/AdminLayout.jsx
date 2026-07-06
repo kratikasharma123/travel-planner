@@ -1,17 +1,12 @@
-import { createElement, useMemo, useState } from 'react';
+import { createElement, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
-  Bell,
   Bot,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
-  ClipboardList,
-  FileText,
   Gauge,
-  Headphones,
   LayoutGrid,
   LogOut,
   MapPin,
@@ -20,10 +15,9 @@ import {
   Plane,
   Plus,
   Search,
-  Settings,
   ShieldCheck,
   Sparkles,
-  Star,
+  Sun,
   Users,
   X,
 } from 'lucide-react';
@@ -37,13 +31,6 @@ const SIDEBAR_ITEMS = [
   { key: 'bookings', tabKey: 'bookings', label: 'Bookings', icon: CalendarDays, to: '/admin/bookings' },
   { key: 'ai-conversations', tabKey: 'ai', label: 'AI Usage', icon: Bot, to: '/admin/ai-conversations' },
   { key: 'destinations', tabKey: 'content', label: 'Destinations', icon: MapPin, to: '/admin/destinations' },
-  { key: 'budgets', tabKey: 'reports', label: 'Budgets', icon: CircleDollarSign, to: '/admin/budgets' },
-  { key: 'content', tabKey: 'content', label: 'Content', icon: FileText, to: '/admin/content' },
-  { key: 'reports', tabKey: 'reports', label: 'Reports', icon: ClipboardList, to: '/admin/reports' },
-  { key: 'notifications', tabKey: 'notifications', label: 'Notifications', icon: Bell, to: '/admin/notifications' },
-  { key: 'support', tabKey: 'support', label: 'Support', icon: Headphones, to: '/admin/support' },
-  { key: 'reviews', tabKey: 'reviews', label: 'Reviews', icon: Star, to: '/admin/reviews' },
-  { key: 'settings', tabKey: 'settings', label: 'Settings', icon: Settings, to: '/admin/settings' },
   { key: 'audit', tabKey: 'audit', label: 'Audit Logs', icon: ShieldCheck, to: '/admin/audit' },
 ];
 
@@ -53,15 +40,19 @@ const ROUTE_TAB_MAP = {
   bookings: 'bookings',
   'ai-conversations': 'ai',
   destinations: 'content',
-  budgets: 'reports',
   content: 'content',
-  reports: 'reports',
-  notifications: 'notifications',
-  support: 'support',
-  reviews: 'reviews',
-  settings: 'settings',
   audit: 'audit',
 };
+
+const searchableAdminSections = [
+  { label: 'Overview', description: 'Admin dashboard and analytics', to: '/admin', keywords: ['dashboard', 'analytics', 'home'] },
+  { label: 'Users', description: 'Search and manage platform users', to: '/admin/users', keywords: ['user', 'roles', 'status'] },
+  { label: 'Trips', description: 'Approve and manage travel plans', to: '/admin/trips', keywords: ['trip', 'itinerary', 'travel'] },
+  { label: 'Bookings', description: 'Flights, hotels, activities, and transport', to: '/admin/bookings', keywords: ['booking', 'flight', 'hotel'] },
+  { label: 'AI Usage', description: 'Assistant prompts and usage logs', to: '/admin/ai-conversations', keywords: ['ai', 'prompt', 'conversation'] },
+  { label: 'Destinations', description: 'Destination and content management', to: '/admin/destinations', keywords: ['destination', 'content', 'place'] },
+  { label: 'Audit Logs', description: 'Admin activity and changes', to: '/admin/audit', keywords: ['audit', 'logs', 'activity'] },
+];
 
 function getInitials(name = '', email = '') {
   const source = name || email || 'Admin';
@@ -227,6 +218,9 @@ function AdminLayout() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => window.localStorage.getItem('tripsafar-admin-theme') === 'dark');
   const visibleTabs = getVisibleAdminTabs(user);
   const visibleTabKeys = useMemo(() => new Set(visibleTabs.map((item) => item.key)), [visibleTabs]);
   const navItems = useMemo(
@@ -237,14 +231,52 @@ function AdminLayout() {
   const activeItem = navItems.find((item) => item.key === activeKey || item.tabKey === ROUTE_TAB_MAP[activeKey]) || navItems[0];
   const userName = user?.name || 'Admin';
   const initials = getInitials(userName, user?.email);
+  const adminSearchTerm = adminSearch.trim().toLowerCase();
+  const accessibleAdminSections = useMemo(
+    () => searchableAdminSections.filter((section) => navItems.some((item) => item.to === section.to)),
+    [navItems]
+  );
+  const adminSearchResults = useMemo(() => {
+    if (!adminSearchTerm) return [];
+
+    return accessibleAdminSections
+      .filter((section) => {
+        const haystack = [section.label, section.description, ...section.keywords].join(' ').toLowerCase();
+        return haystack.includes(adminSearchTerm);
+      })
+      .slice(0, 6);
+  }, [accessibleAdminSections, adminSearchTerm]);
+
+  useEffect(() => {
+    window.localStorage.setItem('tripsafar-admin-theme', isDarkMode ? 'dark' : 'light');
+    document.documentElement.classList.toggle('admin-dark-root', isDarkMode);
+
+    return () => document.documentElement.classList.remove('admin-dark-root');
+  }, [isDarkMode]);
 
   async function handleLogout() {
     await logout();
     navigate('/login', { replace: true });
   }
 
+  function closeSearch() {
+    window.setTimeout(() => setIsSearchOpen(false), 120);
+  }
+
+  function openSearchResult(result) {
+    setAdminSearch('');
+    setIsSearchOpen(false);
+    navigate(result.to);
+  }
+
+  function handleAdminSearchSubmit(event) {
+    event.preventDefault();
+    const firstResult = adminSearchResults[0];
+    if (firstResult) openSearchResult(firstResult);
+  }
+
   return (
-    <div className="min-h-screen bg-[#F8F7F4] text-stone-950">
+    <div className={`admin-shell min-h-screen ${isDarkMode ? 'admin-dark bg-slate-950 text-slate-100' : 'bg-[#F8F7F4] text-stone-950'}`}>
       <div className="flex min-h-screen">
         <div className="sticky top-0 hidden h-screen lg:block">
           <AdminSidebar
@@ -291,7 +323,7 @@ function AdminLayout() {
         </AnimatePresence>
 
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-30 border-b border-orange-100/70 bg-[#F8F7F4]/90 backdrop-blur-xl">
+          <header className={`sticky top-0 z-30 border-b backdrop-blur-xl ${isDarkMode ? 'border-white/10 bg-slate-950/90' : 'border-orange-100/70 bg-[#F8F7F4]/90'}`}>
             <div className="flex min-h-20 flex-col gap-4 px-4 py-4 sm:px-6 xl:px-8 2xl:px-10">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-3">
@@ -312,33 +344,76 @@ function AdminLayout() {
                 </div>
 
                 <div className="flex flex-1 flex-col gap-3 lg:max-w-3xl lg:flex-row lg:items-center lg:justify-end">
-                  <label className="relative min-w-0 flex-1 lg:max-w-sm">
+                  <form className="relative min-w-0 flex-1 lg:max-w-sm" onSubmit={handleAdminSearchSubmit}>
                     <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                     <input
                       type="search"
+                      value={adminSearch}
+                      onChange={(event) => {
+                        setAdminSearch(event.target.value);
+                        setIsSearchOpen(true);
+                      }}
+                      onFocus={() => setIsSearchOpen(true)}
+                      onBlur={closeSearch}
                       placeholder="Search users, trips, bookings..."
-                      className="h-12 w-full rounded-[14px] border border-orange-100 bg-white pl-11 pr-4 text-sm font-semibold text-stone-700 outline-none shadow-sm transition placeholder:text-stone-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-100"
+                      className="h-12 w-full rounded-[14px] border border-orange-100 bg-white pl-11 pr-10 text-sm font-semibold text-stone-700 outline-none shadow-sm transition placeholder:text-stone-400 focus:border-orange-300 focus:ring-4 focus:ring-orange-100"
+                      aria-label="Search admin"
                     />
-                  </label>
+                    {adminSearch && (
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => setAdminSearch('')}
+                        className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-stone-400 transition hover:bg-orange-50 hover:text-orange-600"
+                        aria-label="Clear admin search"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    {isSearchOpen && adminSearchTerm && (
+                      <div className="absolute left-0 right-0 top-14 z-50 overflow-hidden rounded-[18px] border border-orange-100 bg-white shadow-2xl shadow-orange-100/70">
+                        {adminSearchResults.length > 0 ? (
+                          <div className="p-2">
+                            {adminSearchResults.map((result) => (
+                              <button
+                                key={result.to}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => openSearchResult(result)}
+                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-orange-50"
+                              >
+                                <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-600 ring-1 ring-orange-100">
+                                  <Search className="h-4 w-4" />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-black text-stone-950">{result.label}</span>
+                                  <span className="block truncate text-xs font-semibold text-stone-500">{result.description}</span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-sm font-semibold text-stone-500">
+                            Filtering current admin table for “{adminSearch.trim()}”
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </form>
 
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="grid h-12 w-12 place-items-center rounded-[14px] bg-white text-stone-600 shadow-sm ring-1 ring-orange-100 transition hover:-translate-y-0.5 hover:text-orange-600"
-                      aria-label="Toggle theme"
+                      onClick={() => setIsDarkMode((current) => !current)}
+                      className={`grid h-12 w-12 place-items-center rounded-[14px] shadow-sm ring-1 ring-orange-100 transition hover:-translate-y-0.5 hover:text-orange-600 ${isDarkMode ? 'bg-orange-500 text-white' : 'bg-white text-stone-600'}`}
+                      aria-pressed={isDarkMode}
+                      aria-label="Toggle dark mode"
+                      title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
                     >
-                      <Moon className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="relative grid h-12 w-12 place-items-center rounded-[14px] bg-white text-stone-600 shadow-sm ring-1 ring-orange-100 transition hover:-translate-y-0.5 hover:text-orange-600"
-                      aria-label="Notifications"
-                    >
-                      <Bell className="h-5 w-5" />
-                      <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-orange-500 ring-2 ring-white" />
+                      {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                     </button>
                     <Link
-                      to="/admin/destinations"
+                      to="/admin/destinations?create=1"
                       className="hidden h-12 items-center gap-2 rounded-[14px] bg-orange-500 px-4 text-sm font-black text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-orange-600 sm:inline-flex"
                     >
                       <Plus className="h-4 w-4" />
@@ -361,7 +436,7 @@ function AdminLayout() {
 
           <main className="px-4 py-6 sm:px-6 lg:py-8 xl:px-8 2xl:px-10">
             <div className="mx-auto max-w-[1500px]">
-              <Outlet />
+              <Outlet context={{ adminSearch }} />
             </div>
           </main>
         </div>

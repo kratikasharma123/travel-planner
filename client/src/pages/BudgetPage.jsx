@@ -20,46 +20,23 @@ import {
   Users,
 } from 'lucide-react';
 import AlertBanner from '../features/budget/components/AlertBanner.jsx';
-import AnalyticsSection from '../features/budget/components/AnalyticsSection.jsx';
-import { budgetToForm, emptyExpenseForm, expenseToForm } from '../features/budget/budgetFormUtils.js';
+import { budgetToForm, emptyExpenseForm } from '../features/budget/budgetFormUtils.js';
 import BudgetForm from '../features/budget/components/BudgetForm.jsx';
-import BudgetProgressBar from '../features/budget/components/BudgetProgressBar.jsx';
-import CostBreakdown from '../features/budget/components/CostBreakdown.jsx';
 import ExpenseForm from '../features/budget/components/ExpenseForm.jsx';
-import ExpenseTable from '../features/budget/components/ExpenseTable.jsx';
-import FilterPanel from '../features/budget/components/FilterPanel.jsx';
 import RecommendationsSection from '../features/budget/components/RecommendationsSection.jsx';
 import ReportsPanel from '../features/budget/components/ReportsPanel.jsx';
 import SavingsGoalCard from '../features/budget/components/SavingsGoalCard.jsx';
 import ToastStack from '../features/budget/components/ToastStack.jsx';
 import { useBudget } from '../hooks/useBudget.js';
-import { useDebouncedValue } from '../hooks/useDebouncedValue.js';
 import { useTrips } from '../hooks/useTrips.js';
 import {
   currencyFormat,
   getBudgetSummary,
   getCostBreakdown,
-  getMonthlySpendingRows,
   getSavingsProgress,
-  getSavingsTrendRows,
-  getUpcomingRecurringExpenses,
 } from '../utils/budgetCalculations.js';
 import { getBudgetAlerts, getBudgetRecommendations } from '../utils/budgetRecommendations.js';
 import { exportBudgetReport } from '../utils/exportUtils.js';
-
-const initialFilters = {
-  search: '',
-  category: '',
-  vendor: '',
-  status: '',
-  budgetId: '',
-  startDate: '',
-  endDate: '',
-  month: '',
-  year: '',
-  page: 1,
-  limit: 10,
-};
 
 const quickBreakdown = [
   { label: 'Hotel', icon: Hotel, color: 'bg-orange-500' },
@@ -117,8 +94,6 @@ function BudgetPage() {
     budgets,
     selectedBudget,
     expenses,
-    pagination,
-    isLoading,
     isSubmitting,
     error,
     refreshBudgets,
@@ -129,22 +104,16 @@ function BudgetPage() {
     refreshExpenses,
     createExpense,
     updateExpense,
-    deleteExpense,
   } = useBudget();
   const [budgetForm, setBudgetForm] = useState(budgetToForm(null));
   const [expenseForm, setExpenseForm] = useState(emptyExpenseForm);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [filters, setFilters] = useState(initialFilters);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [toasts, setToasts] = useState([]);
   const [reportType, setReportType] = useState('budget');
-  const debouncedSearch = useDebouncedValue(filters.search, 350);
 
-  const activeFilters = useMemo(
-    () => ({ ...filters, search: debouncedSearch, budgetId: filters.budgetId || selectedBudget?._id || '' }),
-    [debouncedSearch, filters, selectedBudget]
-  );
+  const activeFilters = useMemo(() => ({ budgetId: selectedBudget?._id || '' }), [selectedBudget]);
 
   useEffect(() => {
     refreshExpenses(activeFilters);
@@ -155,9 +124,6 @@ function BudgetPage() {
   const alerts = useMemo(() => getBudgetAlerts(selectedBudget, expenses), [selectedBudget, expenses]);
   const costBreakdown = useMemo(() => getCostBreakdown(expenses), [expenses]);
   const savingsProgress = useMemo(() => getSavingsProgress(selectedBudget, summary), [selectedBudget, summary]);
-  const monthlyRows = useMemo(() => getMonthlySpendingRows(expenses), [expenses]);
-  const savingsRows = useMemo(() => getSavingsTrendRows(selectedBudget, expenses), [selectedBudget, expenses]);
-  const upcomingRecurring = useMemo(() => getUpcomingRecurringExpenses(expenses, selectedBudget?.endDate), [expenses, selectedBudget]);
   const currency = selectedBudget?.currency || budgetForm.currency || 'USD';
   const selectedTrip = trips.find((trip) => trip._id === (selectedBudget?.tripId || selectedBudget?.trip || budgetForm.tripId));
   const travelers = Number(selectedTrip?.travelerCount || 1);
@@ -192,25 +158,6 @@ function BudgetPage() {
     selectBudget(budgetId);
     const budget = budgets.find((item) => item._id === budgetId) || null;
     setBudgetForm(budgetToForm(budget));
-    setFilters((current) => ({ ...current, budgetId, page: 1 }));
-  }
-
-  function handleFilterChange(event) {
-    const { name, value } = event.target;
-    setFilters((current) => ({ ...current, [name]: value, page: 1 }));
-    if (name === 'budgetId') {
-      selectBudget(value);
-      const budget = budgets.find((item) => item._id === value) || null;
-      setBudgetForm(budgetToForm(budget));
-    }
-  }
-
-  function handlePageSizeChange(event) {
-    setFilters((current) => ({ ...current, limit: Number(event.target.value), page: 1 }));
-  }
-
-  function resetFilters() {
-    setFilters({ ...initialFilters, budgetId: selectedBudget?._id || '' });
   }
 
   function scrollToBudgetInput() {
@@ -310,25 +257,6 @@ function BudgetPage() {
     }
   }
 
-  async function handleDeleteExpense(expenseId) {
-    setFormError('');
-    setSuccess('');
-
-    try {
-      await deleteExpense(expenseId);
-      setSuccess('Expense deleted successfully.');
-      addToast('Expense deleted successfully.');
-      await refreshExpenses(activeFilters);
-    } catch (apiError) {
-      setFormError(getErrorMessage(apiError, 'Unable to delete expense.'));
-    }
-  }
-
-  function handleEditExpense(expense) {
-    setEditingExpense(expense);
-    setExpenseForm(expenseToForm(expense));
-  }
-
   function handleCancelBudgetEdit() {
     selectBudget('');
     setBudgetForm(budgetToForm(null));
@@ -337,10 +265,6 @@ function BudgetPage() {
   function handleCancelExpenseEdit() {
     setEditingExpense(null);
     setExpenseForm(emptyExpenseForm);
-  }
-
-  function handlePageChange(page) {
-    setFilters((current) => ({ ...current, page }));
   }
 
   function handleExport(format) {
@@ -369,7 +293,7 @@ function BudgetPage() {
           </p>
           <h1 className="mt-5 text-4xl font-black tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">Plan your trip budget smartly</h1>
           <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-white/85 sm:text-lg">Estimate, optimize, and track your travel expenses with AI.</p>
-          <button type="button" onClick={scrollToBudgetInput} className="mt-7 inline-flex items-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-orange-600">
+          <button type="button" onClick={scrollToBudgetInput} className="mt-7 inline-flex items-center gap-2 rounded-full bg-orange-500 px-6 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-orange-600">
             <WandSparkles className="h-4 w-4" />
             Create Budget Plan
           </button>
@@ -403,8 +327,6 @@ function BudgetPage() {
           );
         })}
       </section>
-
-      <BudgetProgressBar utilization={summary.utilization} />
 
       <div ref={budgetInputRef} className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
@@ -486,7 +408,7 @@ function BudgetPage() {
                 <p className="mt-2 text-3xl font-black text-orange-500">{currencyFormat(budget.totalBudget || budget.totalEstimate || 0, budget.currency || currency)}</p>
                 <p className="mt-2 text-sm font-semibold text-slate-500">Created {budget.createdAt ? new Date(budget.createdAt).toLocaleDateString() : 'recently'}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Link to={`/budget/${budget._id}`} state={{ budget }} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">View</Link>
+                  <Link to={`/budget/${budget._id}`} state={{ budget }} className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-white transition hover:bg-orange-600">View</Link>
                   <button type="button" onClick={() => { selectBudget(budget._id); setBudgetForm(budgetToForm(budget)); budgetInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="rounded-full border border-orange-100 px-4 py-2 text-sm font-black text-orange-600 hover:bg-orange-50">Edit</button>
                   <button type="button" onClick={() => deleteBudget(budget._id)} className="rounded-full border border-rose-200 px-4 py-2 text-sm font-black text-rose-700 hover:bg-rose-50"><Trash2 className="inline h-4 w-4" /></button>
                 </div>
@@ -496,43 +418,15 @@ function BudgetPage() {
         )}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Expense management</p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">Add estimated or actual costs</h2>
-          <div className="mt-6"><ExpenseForm formData={expenseForm} selectedBudget={selectedBudget} editingExpense={editingExpense} onChange={handleExpenseChange} onSubmit={handleExpenseSubmit} onCancel={handleCancelExpenseEdit} isSubmitting={isSubmitting} /></div>
-        </section>
-        <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Expenses</p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950">Search and manage costs</h2>
-          <div className="mt-5"><FilterPanel filters={filters} budgets={budgets} onChange={handleFilterChange} onReset={resetFilters} onPageSizeChange={handlePageSizeChange} /></div>
-        </section>
+      <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Expense management</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">Add estimated or actual costs</h2>
+        <div className="mt-6"><ExpenseForm formData={expenseForm} selectedBudget={selectedBudget} editingExpense={editingExpense} onChange={handleExpenseChange} onSubmit={handleExpenseSubmit} onCancel={handleCancelExpenseEdit} isSubmitting={isSubmitting} /></div>
       </section>
 
-      <ExpenseTable expenses={expenses} currency={currency} pagination={pagination} onEdit={handleEditExpense} onDelete={handleDeleteExpense} onPageChange={handlePageChange} isLoading={isLoading} />
       <RecommendationsSection recommendations={recommendations} />
-      <CostBreakdown rows={costBreakdown} currency={currency} />
       <SavingsGoalCard budget={selectedBudget} progress={savingsProgress} expenses={expenses} />
 
-      <section className="rounded-[2rem] border border-orange-100 bg-white p-5 shadow-xl shadow-orange-100/40 sm:p-6">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-500">Recurring expenses</p>
-        <h2 className="mt-2 text-2xl font-black text-slate-950">Upcoming recurring costs</h2>
-        {upcomingRecurring.length === 0 ? (
-          <p className="mt-5 rounded-2xl bg-orange-50 p-4 text-slate-600">No upcoming recurring expenses calculated.</p>
-        ) : (
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {upcomingRecurring.slice(0, 6).map((expense) => (
-              <article key={`${expense._id}-${expense.occurrenceDate}`} className="rounded-2xl bg-orange-50 p-4">
-                <p className="font-bold text-slate-950">{expense.title}</p>
-                <p className="mt-1 text-sm text-slate-600">{expense.occurrenceDate} • {expense.recurrenceFrequency}</p>
-                <p className="mt-2 font-semibold text-slate-950">{currencyFormat(expense.amount, currency)}</p>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <AnalyticsSection summary={summary} expenses={expenses} monthlyRows={monthlyRows} savingsRows={savingsRows} />
       <ReportsPanel reportType={reportType} onReportTypeChange={(event) => setReportType(event.target.value)} onExport={handleExport} disabled={!selectedBudget} />
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </section>

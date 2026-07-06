@@ -1,4 +1,4 @@
-import { CalendarDays, FileText, Repeat, Store, Tag, Wallet } from 'lucide-react';
+import { FileText, Repeat, Store, Tag, Wallet } from 'lucide-react';
 
 const categories = ['accommodation', 'food', 'transport', 'activities', 'shopping', 'insurance', 'miscellaneous'];
 const inputClass = 'rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-300 focus:bg-white focus:ring-4 focus:ring-orange-100 disabled:bg-slate-100';
@@ -23,11 +23,7 @@ function ExpenseForm({ formData, selectedBudget, editingExpense, onChange, onSub
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="relative">
-          <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-500" />
-          <input type="date" name="expenseDate" value={formData.expenseDate} onChange={onChange} required className={`${inputClass} w-full pl-11`} />
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="relative">
           <Store className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-500" />
           <input name="vendor" value={formData.vendor} onChange={onChange} className={`${inputClass} w-full pl-11`} placeholder="Vendor" />
@@ -53,11 +49,6 @@ function ExpenseForm({ formData, selectedBudget, editingExpense, onChange, onSub
             <option value="yearly">Yearly</option>
           </select>
         </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-        <input type="date" name="recurrenceEndDate" value={formData.recurrenceEndDate} onChange={onChange} disabled={formData.costType !== 'recurring'} className={inputClass} />
-        <textarea name="notes" value={formData.notes} onChange={onChange} rows="2" className={inputClass} placeholder="Notes" />
       </div>
 
       <div className="flex flex-wrap gap-3 border-t border-orange-100 pt-5">

@@ -6,13 +6,18 @@ const initialData = {
   users: [],
   trips: [],
   bookings: [],
+  budgets: [],
+  expenses: [],
   aiLogs: [],
   tickets: [],
   reviews: [],
   notifications: [],
+  tripNotifications: [],
   auditLogs: [],
   contentItems: [],
+  destinations: [],
   settings: [],
+  reports: [],
 };
 
 function getErrorMessage(apiError, fallback) {

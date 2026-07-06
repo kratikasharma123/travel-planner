@@ -5,7 +5,6 @@ const reportTypes = [
   ['vendor', 'Vendor Report'],
   ['monthly', 'Monthly Report'],
   ['savings', 'Savings Report'],
-  ['breakdown', 'Cost Breakdown'],
 ];
 
 function ReportsPanel({ reportType, onReportTypeChange, onExport, disabled }) {
@@ -20,8 +19,6 @@ function ReportsPanel({ reportType, onReportTypeChange, onExport, disabled }) {
         </select>
         <div className="flex flex-wrap gap-2">
           <button type="button" disabled={disabled} onClick={() => onExport('pdf')} className="rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60">PDF</button>
-          <button type="button" disabled={disabled} onClick={() => onExport('excel')} className="rounded-full border border-orange-100 px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60">Excel</button>
-          <button type="button" disabled={disabled} onClick={() => onExport('csv')} className="rounded-full border border-orange-100 px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60">CSV</button>
         </div>
       </div>
     </section>
