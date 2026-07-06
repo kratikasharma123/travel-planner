@@ -119,14 +119,12 @@ function PlannerPage() {
 
     itineraryItems,
     checklists,
-    locations,
     recommendations,
     refreshTripManagement,
     createGeneratedItinerary,
     seedPackingChecklist,
     toggleChecklistItem,
     setRecommendations,
-    locationsCrud,
     isLoading,
     error,
   } = useTripManagement();
@@ -273,26 +271,6 @@ function PlannerPage() {
       setFormError(apiError?.response?.data?.message || apiError?.message || 'Unable to save trip.');
     } finally {
       setIsSubmittingTrip(false);
-    }
-  }
-
-  async function handleSaveMapLocation(location) {
-    if (!selectedTrip?._id) {
-      setFormError('Save or select a trip before saving map locations.');
-      return;
-    }
-
-    setFormError('');
-    setSuccess('');
-    try {
-      await locationsCrud.create({
-        ...location,
-        tripId: selectedTrip._id,
-      });
-      await refreshTripManagement(selectedTrip._id);
-      setSuccess('Map location saved to this trip.');
-    } catch (apiError) {
-      setFormError(apiError?.response?.data?.message || apiError?.message || 'Unable to save map location.');
     }
   }
 
@@ -568,12 +546,7 @@ function PlannerPage() {
         <div className="mt-5 grid gap-4 md:grid-cols-3">{smartSuggestions.map((suggestion) => <SmartSuggestionCard key={suggestion.title} suggestion={suggestion} />)}</div>
       </section>
 
-      <WeatherMapPanels
-        weather={weather}
-        locations={locations}
-        selectedTrip={selectedTrip}
-        onSaveLocation={handleSaveMapLocation}
-      />
+      <WeatherMapPanels weather={weather} />
     </section>
   );
 }

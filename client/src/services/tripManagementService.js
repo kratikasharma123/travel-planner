@@ -9,7 +9,6 @@ import {
   mapItinerary,
   mapItineraryItem,
   mapNotification,
-  mapSavedLocation,
   mapTravelDocument,
   throwIfError,
 } from './supabaseUtils.js';
@@ -148,7 +147,6 @@ function payloadToRow(table, payload = {}) {
   if (table === 'travel_checklists') return { category: payload.category || 'Travel Essentials', title: payload.title, is_complete: Boolean(payload.isComplete), sort_order: payload.sortOrder || 0 };
   if (table === 'travel_documents') return { document_type: payload.documentType || 'Travel Document', title: payload.title, file_path: payload.filePath || '', file_name: payload.fileName || '', mime_type: payload.mimeType || '', notes: payload.notes || '' };
   if (table === 'trip_notifications') return { notification_type: payload.notificationType || 'reminder', title: payload.title, message: payload.message || '', remind_at: payload.remindAt || null, is_read: Boolean(payload.isRead), priority: payload.priority || 'medium' };
-  if (table === 'saved_locations') return { location_type: payload.locationType || 'attraction', name: payload.name, address: payload.address || '', lat: payload.lat || null, lng: payload.lng || null, notes: payload.notes || '', metadata: payload.metadata || {} };
   return payload;
 }
 
@@ -156,7 +154,6 @@ export const bookingsCrud = makeSimpleCrud('trip_bookings', mapBooking, 'booking
 export const checklistsCrud = makeSimpleCrud('travel_checklists', mapChecklistItem, 'checklists');
 export const documentsCrud = makeSimpleCrud('travel_documents', mapTravelDocument, 'documents');
 export const notificationsCrud = makeSimpleCrud('trip_notifications', mapNotification, 'notifications');
-export const locationsCrud = makeSimpleCrud('saved_locations', mapSavedLocation, 'locations');
 
 export async function listDestinationRecommendations() {
   const userId = await getCurrentUserId();

@@ -27,7 +27,6 @@ export function useTripManagement() {
   const [checklists, setChecklists] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [locations, setLocations] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,20 +36,18 @@ export function useTripManagement() {
     setIsLoading(true);
     setError('');
     try {
-      const [itineraryData, bookingData, checklistData, documentData, notificationData, locationData] = await Promise.all([
+      const [itineraryData, bookingData, checklistData, documentData, notificationData] = await Promise.all([
         tripManagementService.listItineraries(tripId),
         tripManagementService.bookingsCrud.list(tripId),
         tripManagementService.checklistsCrud.list(tripId),
         tripManagementService.documentsCrud.list(tripId),
         tripManagementService.notificationsCrud.list(tripId),
-        tripManagementService.locationsCrud.list(tripId),
       ]);
       setItineraries(itineraryData.itineraries);
       setBookings(unwrap(bookingData));
       setChecklists(unwrap(checklistData));
       setDocuments(unwrap(documentData));
       setNotifications(unwrap(notificationData));
-      setLocations(unwrap(locationData));
       if (itineraryData.itineraries[0]) {
         const items = await tripManagementService.listItineraryItems(itineraryData.itineraries[0]._id);
         setItineraryItems(items.items);
@@ -138,7 +135,6 @@ export function useTripManagement() {
     checklists,
     documents,
     notifications,
-    locations,
     recommendations,
     isLoading,
     error,
@@ -152,6 +148,5 @@ export function useTripManagement() {
     checklistsCrud: tripManagementService.checklistsCrud,
     documentsCrud: tripManagementService.documentsCrud,
     notificationsCrud: tripManagementService.notificationsCrud,
-    locationsCrud: tripManagementService.locationsCrud,
   };
 }
